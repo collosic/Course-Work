@@ -1,0 +1,4 @@
+# Ignore any executables and file creation
+tests_public/*
+.metadata/*
+.recommenders/*
