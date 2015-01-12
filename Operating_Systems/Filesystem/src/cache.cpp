@@ -7,10 +7,6 @@ OFT::OFT() {
 Memory::Memory() {
 }
 
-Memory::Memory(Disk *disk) {
-    this->disk = disk;   
-}
-
 
 void Memory::initMemory() {
     
@@ -71,7 +67,13 @@ void Pack::extractPackedInteger(byte *arr) {
 void Memory::setDescriptorBlock(int desc_blk_num, int desc, int block_num_req, int file_index) {
     int offset = desc * DESCRIPTOR_SIZE;
     int addr_offset = offset + (INT_SIZE + (file_index * INT_SIZE));
-    //memory_blks[desc_blk_num][ 
+    byte *addr = disk.getBlkAddr(block_num_req);
+    
+    byte *test = addr;
+    std::cout << test[0] << std::endl;
+
+    //memory_blks[desc_blk_num][addr_offset] = 
+
 }
 
 

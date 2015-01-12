@@ -14,8 +14,7 @@ void clearBitmap();
 // Classes
 class Disk {
   private:
-    byte ldisk[NUM_BLOCKS][BLOCK_LENGTH];
-    
+    byte **ldisk;
     // Private Functions
   public:
     Disk();
@@ -23,6 +22,8 @@ class Disk {
     // Public Functions
     void readBlock(int block, byte *loc);
     void writeBlock(int block, byte *loc);
+    byte* getBlkAddr(int blk_num) { return ldisk[blk_num]; };
 };
+
 
 #endif

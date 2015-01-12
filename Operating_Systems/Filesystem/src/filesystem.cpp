@@ -2,7 +2,6 @@
 #include <iostream>
 
 FileSystem::FileSystem() {
-    Memory mem(&disk);
 }
 
 void FileSystem::initDisk(vecstr *in) {

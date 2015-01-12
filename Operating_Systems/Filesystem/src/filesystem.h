@@ -17,7 +17,7 @@ typedef std::vector<std::string> vecstr;
 
 class FileSystem {
   private:
-    Disk disk;
+    Disk *disk;
     Memory mem;
     std::string response;
 

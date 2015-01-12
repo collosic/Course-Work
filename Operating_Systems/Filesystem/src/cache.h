@@ -31,7 +31,7 @@ class OFT {
 
 class Memory {
   private:
-    Disk *disk;
+    Disk disk;
     byte memory_blks[NUM_BLOCKS][BLOCK_LENGTH];
     byte slot;
     byte offset;
@@ -40,7 +40,6 @@ class Memory {
   
   public:
     Memory();
-    Memory(Disk *disk);
     
     void initMemory();  
     void clearBlock(int block_num);
