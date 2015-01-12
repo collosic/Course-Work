@@ -8,7 +8,10 @@
 #include "disk.h"
 #include "cache.h"
 
-
+// Constants
+#define OFT_SIZE 4
+#define MEM_DIR_BLK 1
+#define OFT_DIR_BLK 0
 
 // Type Definitions
 typedef std::vector<std::string> vecstr;
@@ -17,8 +20,10 @@ typedef std::vector<std::string> vecstr;
 
 class FileSystem {
   private:
-    Disk *disk;
+    Disk disk;
     Memory mem;
+    OFT oft[OFT_SIZE];
+    UnPack *unpack;
     std::string response;
 
     // Private Functions

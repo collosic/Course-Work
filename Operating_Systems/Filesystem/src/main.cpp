@@ -16,11 +16,10 @@ int main()
             in.push_back(buf);
         }
 
-        std::cout << driver.interface(&in) << std::endl;
+        std::cout << "> " + driver.interface(&in) << std::endl;
     }
     return 0;
 }
-
 
 
 
