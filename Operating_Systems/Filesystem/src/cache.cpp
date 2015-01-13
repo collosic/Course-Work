@@ -1,4 +1,5 @@
 #include "cache.h"
+#include <iostream>
 
 OFT::OFT() {
     current_pos = 0;
@@ -10,7 +11,7 @@ OFT::OFT() {
 Memory::Memory() {
 }
 
-void OFT::clearDirectory(const byte *mem) {
+void OFT::clearDirectory() {
     // copy the contects of the directory block into the buffer
     Pack *pack = new Pack();
     pack->intToBytes(buffer, INT_SIZE, EMPTY_LOC);
@@ -18,17 +19,65 @@ void OFT::clearDirectory(const byte *mem) {
         // place a -1 in the index of empty file
         pack->intToBytes(buffer, i, EMPTY_LOC);
     }
+    isEmpty = false;
+    delete pack;
 }
-void Memory::initMemory() {
-    // Set the block 0 bitmap to have a single directory out bitmap should have 0 - 7 blocks 
-    // as taken.  0 through 6 for bitmap and file descriptors and 7 for the first directory index
-    clearBlock(0);
-    for (int i = 0; i < CACHE_BLK_SIZE + 1; ++i) {
-        setBitMapLocation(i);
-        setBit(&memory_blks[BITMAP_BLK][slot], offset);
+
+
+int OFT::findAvailableSlot() {
+    UnPack *unpack = new UnPack();
+    for (int i = INT_SIZE; i < BLOCK_LENGTH; i += SLOT_SIZE) {
+        if (unpack->bytesToInt(buffer, i) == EMPTY_LOC) {
+           // return the begining of the slot found
+           delete unpack;
+           return i - INT_SIZE;           
+        }
     }
+    delete unpack;
+    return -1;
+}
+
+
+void OFT::setFile(int file_loc, int desc_index, std::string name) {
+    // prep the file for a write
+    Pack *pack = new Pack();
+    char *char_name = (char*)name.c_str();
+    int length = name.size();
+
+    // write char to the directory
+    for (int i = 0; i < length; ++i) {
+        buffer[file_loc++] = char_name[i];
+    } 
+    // now write the index of the file descriptot
+    pack->intToBytes(buffer, file_loc, desc_index);  
+}
+
+
+void Memory::initMemory() {
+    Pack *pack = new Pack();
+    int bitMap = 0;
+    
+    // Set the block 0 bitmap to have a single directory the bitmap should have 0 - 7 blocks 
+    // as taken.  0 through 6 for bitmap and file descriptors and 7 for the first directory index
+    generateBitMask();
+    clearBlock(0);
+    
+    for (int i = 0; i < CACHE_BLK_SIZE; ++i) {
+        setBit(&bitMap, bitMask[i]);       
+    }
+    // write the new bitMap to block 0
+    pack->intToBytes(memory_blks[0], 0, bitMap);
     //std::cout << static_cast<unsigned int>(memory_blks[BITMAP_BLK][0]) << std::endl;       
     createDirectory();
+
+    // Place a -1 in all descriptors length slot to make them empty, except directory
+    for (int i = 1; i < CACHE_BLK_SIZE; ++i) {
+        for (int j = 0; j < BLOCK_LENGTH; j += DESCRIPTOR_SIZE) {
+           pack->intToBytes(memory_blks[i], j, EMPTY_LOC);
+        }
+    }  
+    pack->intToBytes(memory_blks[1], 0, 0);
+    delete pack;
 }
 
 void Memory::clearBlock(int block_num) {
@@ -43,6 +92,13 @@ void Memory::setBitMapLocation(byte bit_loc) {
     offset = SLOT_SIZE - ((bit_loc + 1) % SLOT_SIZE);
 }
 
+
+void Memory::generateBitMask() {
+    bitMask[BIT_MASK_SIZE - 1] = 1;
+    for (int i = BIT_MASK_SIZE - 2; i >= 0; i--) {
+        bitMask[i] = bitMask[i + 1] << 1; 
+    }
+}
 void Memory::createDirectory() {
     // Set the Directory to have zero files 
     setDescriptorEntry(1, 0, 0);
@@ -86,6 +142,62 @@ int Memory::getDescriptorIndexLocation(int desc_index, int file_index) {
 }
 
 
+int Memory::findAvailableDescriptorSlot() {
+    UnPack *unpack = new UnPack();
+    for (int i = 1; i < CACHE_BLK_SIZE; i++) {
+        for (int j = 0; j < BLOCK_LENGTH; j += SLOT_SIZE) {
+            if (unpack->bytesToInt(memory_blks[i], j) == EMPTY_LOC) {
+                return j;
+            }
+        }
+    }
+    // No empty space available, directory is full
+    return -1;
+}
+
+int Memory::findAvailableBlock() {
+    UnPack *unpack = new UnPack();
+    int bits;
+    int location = -1;
+    // we place a 8 here because our bitmap is 64 bits in length, but out
+    // bitMask is only 32 bits.  Therefore, we must search twice if needed
+    for (int i = 0; i < 8; i += 4) {
+        // grab an int from the bitmap and search for an empty block
+        bits = unpack->bytesToInt(memory_blks[BITMAP_BLK], i);
+        location = searchBitMap(bits);
+        if (location != -1 && i == 0) {
+            break;
+        }
+        if (location != -1 && i > 0) {
+            location += BIT_MASK_SIZE;
+        }
+    }
+    return location;
+}
+
+int Memory::searchBitMap(int bits) {
+    int test = 1;
+    for (int i = 0; i < BIT_MASK_SIZE; ++i) {
+        test = bits & bitMask[i];
+        if (test == 0) {
+            return i + 1;
+        }        
+    }
+    return -1;    
+}
+
+
+void Memory::setFileDescriptor(int file_loc, int blk_num) {
+    Pack *pack = new Pack();
+    // determine the descriptor block and offset
+    int desc_blk = file_loc / BLOCK_LENGTH;
+    int slot_offset = file_loc % BLOCK_LENGTH;
+
+    // write the length (zero) of the file followed by the index to its first block
+    pack->intToBytes(memory_blks[desc_blk], slot_offset, 0);
+    pack->intToBytes(memory_blks[desc_blk], slot_offset + INT_SIZE, blk_num); 
+}
+
 
 void Pack::intToBytes(byte *block, int offset, int val) {
     for (int i = 3; i >= 0; i--) {
@@ -101,7 +213,7 @@ int UnPack::bytesToInt(const byte *mem_loc, int start_loc) {
         num = num << 8;
         num = num | ((int)mem_loc[start_loc + i] & MASK);        
     }
-    return this->num;
+    return num;
 }
 
 

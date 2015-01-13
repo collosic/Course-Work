@@ -18,17 +18,23 @@ std::string Driver::interface(vecstr *in) {
     std::string command = in->front();
     int value = -1;
     
+    // check and see if the FS has been initialized if the command is not "in"
+    if (command.compare("in") != 0) {
+        if (fs.checkInitialization() == false) return "you must first initialize a disk";
+    }
+
     // remove the first element that was extracted into command
     in->erase(in->begin());
      
     for (int i = 0; i < NUM_COMMANDS; ++i) {
         if(command.compare(commands[i]) == 0) {
             value = i + 1;
+            break;
         }
     }
     std::string response;
     switch (value) {
-        case 1:     response = "Good work"; 
+        case 1:     fs.createFile(in); 
                     break;
         case 2:     response = "Good";
                     break;

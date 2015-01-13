@@ -2,6 +2,7 @@
 #define CACHE_H 
 
 #include <string>
+#include <cstring>
 #include <vector>
 #include <iterator>
 
@@ -16,6 +17,7 @@
 #define INT_SIZE 4
 #define DESCRIPTOR_SIZE 16
 #define EMPTY_LOC -1
+#define BIT_MASK_SIZE 32
 
 // Type Definitions
 typedef std::vector<std::string> vecstr;
@@ -33,8 +35,10 @@ class OFT {
   public:
     OFT();
     
-    void clearDirectory(const byte *mem);
+    void clearDirectory();
     byte* getBuf() { return buffer; };
+    int findAvailableSlot();
+    void setFile(int file_loc, int desc_index, std::string name);
 };
 
 class Memory {
@@ -42,28 +46,36 @@ class Memory {
     byte memory_blks[NUM_BLOCKS][BLOCK_LENGTH];
     byte slot;
     byte offset;
-    
+    int bitMask[BIT_MASK_SIZE];
+
     // Private Functions
-    void setBit(byte *num, byte x) { *num |= 1 << x; }
-  
+    void setBit(int *num, int x) { *num |= x; };
+    void clearBit(int *num, int x) { *num &= ~(x); };
+    void toggleBit(int *num, int x) { *num ^= 1 << x; };
+    void checkBit(int *num, int x);   
+
   public:
     Memory();
     
     void initMemory();  
     void clearBlock(int block_num);
     void setBitMapLocation(byte bit_loc);
+    void generateBitMask();
     void createDirectory();
     void setDescriptorEntry(int block, int offset, int length);
     void setDescriptorBlock(int desc_blk_num, int desc, int block_num_req, int file_index);
+    void setFileDescriptor(int file_loc, int blk_num);
 
     inline byte* getBlk(int blk_num) { return memory_blks[blk_num]; };
     int getDescriptorIndexLocation(int desc_index, int file_index);
     int getFileIndex(int blk_num, int desc_index, int file_index);
+    int findAvailableDescriptorSlot();
+    int findAvailableBlock();
+    int searchBitMap(int bits);
 };
 
 class Pack {
   private:
-    byte pack_mem[INT_SIZE];
     const int MASK;
 
   public:
@@ -74,8 +86,8 @@ class Pack {
 
 class UnPack {
   private:
-    int num;
     const int MASK;
+    int num;
 
   public:
     UnPack() : MASK(0xFF) {};

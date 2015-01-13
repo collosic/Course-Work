@@ -25,6 +25,7 @@ class FileSystem {
     OFT oft[OFT_SIZE];
     UnPack *unpack;
     std::string response;
+    bool isInitialized;
 
     // Private Functions
     
@@ -38,7 +39,10 @@ class FileSystem {
     void initDisk(vecstr *in);    
     void createDisk();
     void loadDisk(std::string file_name);
-
+    void createFile(vecstr *in);
+    
+    int findAvailableDescriptorSlot();
+    inline bool checkInitialization() { return isInitialized; };
 };
 
 
