@@ -9,14 +9,13 @@ Driver::Driver() {
 
     // Initialize the accepted commands
     std::string tmp[] = {"cr", "de", "op", "cl", "rd", "wr", "sk", "dr", "in", "sv"};
-    for (int i = 0; i < NUM_COMMANDS; ++i) {
-        commands[i] = tmp[i];        
+    for (int i = 0; i < NUM_COMMANDS; i++) {
+        map[tmp[i]] = i + 1;            
     }
 }
 
 std::string Driver::interface(vecstr *in) {
     std::string command = in->front();
-    int value = -1;
     
     // check and see if the FS has been initialized if the command is not "in"
     if (command.compare("in") != 0) {
@@ -26,17 +25,13 @@ std::string Driver::interface(vecstr *in) {
     // remove the first element that was extracted into command
     in->erase(in->begin());
      
-    for (int i = 0; i < NUM_COMMANDS; ++i) {
-        if(command.compare(commands[i]) == 0) {
-            value = i + 1;
-            break;
-        }
-    }
+    std::unordered_map<std::string, int>::const_iterator value = map.find(command);
     std::string response;
-    switch (value) {
+ 
+    switch (value->second) {
         case 1:     fs.createFile(in); 
                     break;
-        case 2:     response = "Good";
+        case 2:     fs.deleteFile(in); 
                     break;
         case 3:     response = "op";
                     break;

@@ -9,10 +9,13 @@
 // Constants
 #define NUM_COMMANDS 10
 
+
+
 class Driver {
   private:
     FileSystem fs;
     std::string commands[NUM_COMMANDS];
+    std::unordered_map<std::string, int> map;
 
   public:
     // Constructors

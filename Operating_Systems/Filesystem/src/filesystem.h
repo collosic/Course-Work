@@ -4,6 +4,7 @@
 #include <string>
 #include <vector>
 #include <iterator>
+#include <unordered_map>
 
 #include "disk.h"
 #include "cache.h"
@@ -40,7 +41,8 @@ class FileSystem {
     void createDisk();
     void loadDisk(std::string file_name);
     void createFile(vecstr *in);
-    
+    void deleteFile(vecstr *in);
+
     int findAvailableDescriptorSlot();
     inline bool checkInitialization() { return isInitialized; };
 };

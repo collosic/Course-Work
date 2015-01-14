@@ -18,6 +18,7 @@
 #define DESCRIPTOR_SIZE 16
 #define EMPTY_LOC -1
 #define BIT_MASK_SIZE 32
+#define MAX_NUM_BLKS 3
 
 // Type Definitions
 typedef std::vector<std::string> vecstr;
@@ -39,11 +40,23 @@ class OFT {
     byte* getBuf() { return buffer; };
     int findAvailableSlot();
     void setFile(int file_loc, int desc_index, std::string name);
+    void seek(int index, int new_pos);
+
+    inline void setCurrentPos(int pos) { current_pos = pos; };
+    inline void setIndex(int i) { index = i; };
+    inline void setLength(int l)  { length = l; };
+    inline void setEmpty(bool flag) { isEmpty = flag; };
+    inline int getCurrentPos() { return current_pos; };
+    inline int getindex() { return index; };
+    inline int getlength() { return length; };
+    inline bool getIsEmpty() { return isEmpty; };
+
 };
 
 class Memory {
   private:
     byte memory_blks[NUM_BLOCKS][BLOCK_LENGTH];
+    int dir_slots[MAX_NUM_BLKS];
     byte slot;
     byte offset;
     int bitMask[BIT_MASK_SIZE];
@@ -69,9 +82,11 @@ class Memory {
     inline byte* getBlk(int blk_num) { return memory_blks[blk_num]; };
     int getDescriptorIndexLocation(int desc_index, int file_index);
     int getFileIndex(int blk_num, int desc_index, int file_index);
+    int getDirectoryLength();
     int findAvailableDescriptorSlot();
     int findAvailableBlock();
     int searchBitMap(int bits);
+    int findFileName(std::string file_name, OFT *oft);
 };
 
 class Pack {
