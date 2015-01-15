@@ -42,7 +42,7 @@ class FileSystem {
     void loadDisk(std::string file_name);
     void createFile(vecstr *in);
     void deleteFile(vecstr *in);
-
+    void openFile(vecstr *in);
     int findAvailableDescriptorSlot();
     inline bool checkInitialization() { return isInitialized; };
 };

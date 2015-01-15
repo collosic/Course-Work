@@ -4,11 +4,12 @@
 
 
 Disk::Disk() {
-    ldisk = new byte*[NUM_BLOCKS];
-    for (int i = 0; i < NUM_BLOCKS; ++i) {
-        ldisk[i] = new byte[BLOCK_LENGTH];
+    for (int i = 0; i < NUM_BLOCKS; i++) {
+        for (int j = 0; j < BLOCK_LENGTH; j++) {
+            ldisk[i][j] = 0;
+        }
     }
 }
 
-
+   
 
