@@ -22,11 +22,12 @@
 #define MAX_NUM_DESC 24
 #define DIR_INDEX 0
 #define NUM_FILE_PER_BLK 8
+ 
+
 
 // Type Definitions
 typedef std::vector<std::string> vecstr;
 typedef unsigned char byte;
-
 
 class Pack {
   private:
@@ -84,43 +85,43 @@ class Descriptor {
 class OFT {
   private:
     File dir_block[8];
+    Disk *disk;
     byte buffer[BLOCK_LENGTH];
     int current_pos;
     int index;
     int length;
     bool isEmpty;
-    Pack pack;
-    UnPack unpack;
  
   public:
     OFT();
     
-    void initDirectory();
+    //void initDiskAccess(Disk *d) { disk = d; };
     byte* getBuf() { return buffer; };
     int findEmptyDirLoc();
     void setFileInDirBlk(int file_loc, int desc_index, std::string name);
-    void seek(int index, int new_pos);
-    int read(byte *block, int i, int c_pos, int l);
+    
+    void seek(int new_pos, Descriptor *desc);
+    int read(int blk_num, int i, int c_pos, int l);
+    void resetParam();
 
     inline void setCurrentPos(int pos) { current_pos = pos; };
     inline void setIndex(int i) { index = i; };
     inline void setLength(int l)  { length = l; };
     inline void setEmpty(bool flag) { isEmpty = flag; };
     inline int getCurrentPos() { return current_pos; };
-    inline int getindex() { return index; };
-    inline int getlength() { return length; };
+    inline int getIndex() { return index; };
+    inline int getLength() { return length; };
     inline bool getIsEmpty() { return isEmpty; };
     inline std::string getFileName(int i) { return dir_block[i].getName(); };
     inline int getDescIndex(int i) { return dir_block[i].getIndex(); };
     inline void clearFileName(int i) { dir_block[i].setName(""); };
     inline void clearDescIndex(int i) { dir_block[i].setIndex(-1); };
-
+    inline void initDiskAccess(Disk *d) { disk = d; };
 };
 
 class Memory {
   private:
     Descriptor desc[24];
-
     byte memory_blks[NUM_BLOCKS][BLOCK_LENGTH];
     int dir_slots[MAX_NUM_BLKS];
     byte slot;
@@ -154,12 +155,11 @@ class Memory {
     int searchBitMap(int bits);
     int findFileName(std::string file_name, OFT *oft);
     int deleteFile(int i, OFT *oft);
-    int getBitMap(int block_loc);
+    int generateBitMap(int block_loc);
     void writeToBitMap(int blk_loc, int bitmap);
     inline int getFileLength(int i) { return desc[i].getLength(); };
     inline int getBlockLocation(int i, int j) { return desc[i].getDiskMapLoc(j); };
 };
-
 
 
 #endif

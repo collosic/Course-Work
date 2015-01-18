@@ -35,7 +35,7 @@ std::string Driver::interface(vecstr *in) {
                     break;
         case 3:     fs.openFile(in); 
                     break;
-        case 4:     response = "";
+        case 4:     fs.closeFile(in); 
                     break;
         case 5:     response = "";
                     break;

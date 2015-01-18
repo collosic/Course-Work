@@ -20,10 +20,9 @@ class Disk {
     Disk();
 
     // Public Functions
-    void readBlock(int block, byte *loc);
-    void writeBlock(int block, byte *loc);
     byte* getBlkAddr(int blk_num) { return ldisk[blk_num]; };
-    void read_block(int i, byte *p) { p = ldisk[i]; };
+    void read_block(int blk_num, byte *p);
+    void write_block(int blk_num, byte *p);
 };
 
 

@@ -9,18 +9,13 @@ OFT::OFT() {
 
 
 Memory::Memory() {
+    // 
     int dir = INT_SIZE;
     for (int i = 0; i < MAX_NUM_BLKS; i++) {
         dir_slots[i] = dir;
         dir += INT_SIZE;
     }
 }
-
-void OFT::initDirectory() {
-    // copy the contents of the directory block into the buffer
-    isEmpty = false;
-}
-
 
 int OFT::findEmptyDirLoc() {
     // look for an empty file location in the directory
@@ -44,13 +39,17 @@ void OFT::setFileInDirBlk(int file_loc, int desc_index, std::string name) {
 
 // 
 
-void OFT::seek(int index, int new_pos) {
+void OFT::seek(int new_pos, Descriptor *desc) {
+    int new_disk_map_index = (new_pos / BLOCK_LENGTH) + 1;
+    int old_disk_map_index = (current_pos / BLOCK_LENGTH) + 1;
     // see if the we are currently in the correct block 
-    if(current_pos % BLOCK_LENGTH != new_pos % BLOCK_LENGTH) {
-        // now move in the block from the disk into the current OFT index
-        // extract the directory block that will first be searched
-        //int dir_blk = unpack->bytesToInt(memory_blks[1], dir_slots[i]];
-
+    if(old_disk_map_index != new_disk_map_index) {
+        // get the block number that we need to read into the buffer
+        int new_blk_num = desc->getDiskMapLoc(new_disk_map_index);
+        int old_blk_num = desc->getDiskMapLoc(old_disk_map_index);
+        // write the current block back to disk and then read in the new one
+        disk->write_block(old_blk_num, buffer);
+        read(new_blk_num, index, new_pos, length);
     }
     current_pos = new_pos;
 }
@@ -58,15 +57,27 @@ void OFT::seek(int index, int new_pos) {
 // read will read a block from the disk and place it in the OFT table with
 // the specified index
 
-int OFT::read(byte *block, int i, int c_pos, int l) {
-    for (int i = 0; i < BLOCK_LENGTH; i++) {
-        buffer[i] = block[i]; 
-    }
+int OFT::read(int blk_num, int i, int c_pos, int l) {
+    // read in the block from disk to buffer
+    disk->read_block(blk_num, buffer);
     current_pos = c_pos;
     index = i;
     length = l; 
     isEmpty = false;
+    return 0;
 }
+
+
+void OFT::resetParam() {
+    // reset all the oft parameters
+    current_pos = -1;
+    index = -1;
+    length = -1;
+    isEmpty = true;
+}
+
+
+
 
 
 void Memory::initMemory() {
@@ -230,10 +241,11 @@ void Memory::createNewFileDescriptor(int desc_index, int blk_num) {
 
 int Memory::findFileName(std::string file_name, OFT *oft) {
     int dir_length = desc[DIR_INDEX].getLength();
-
+    
+    // this loop will find the name of the file and returns a ptr index to that file
     for (int i = 0; i < dir_length; i++) {
         if (i % NUM_FILE_PER_BLK == 0) {
-            oft->seek(0, i * NUM_FILE_PER_BLK);
+            oft->seek(i * NUM_FILE_PER_BLK, &desc[DIR_INDEX]);
         }
         if (file_name.compare(oft->getFileName(i)) == 0) {
             // clear the block
@@ -244,32 +256,36 @@ int Memory::findFileName(std::string file_name, OFT *oft) {
 }
 
 
-int Memory::deleteFile(int i, OFT *oft) {
-    int desc_index = oft->getDescIndex(i);
+int Memory::deleteFile(int ptr_to_file, OFT *oft) {
+    // get the the index number of the descriptor that will be deleted
+    int desc_index = oft->getDescIndex(ptr_to_file);
+    
     // set the file descriptor length to -1 and its disk map to -1
-           
     // get the length of the file to iterate through its disk map and remove all blocks
-    int num_block = (desc[desc_index].getLength() % NUM_FILE_PER_BLK) + 1;
-    desc[desc_index].setLength(-1);
+    int num_block = (desc[desc_index].getLength() / BLOCK_LENGTH) + 1;
     for (int j = 0; j < num_block; j++) {
         // clear block from bitmap and remove index from descriptor
         UnPack *unpack = new UnPack();
         // clear the block using the bitmap
         int bit_loc = desc[desc_index].getDiskMapLoc(j);
-        int bitmap = getBitMap(bit_loc);
+        int bitmap = generateBitMap(bit_loc);
         bitmap = clearBit(&bitmap, bitMask[bit_loc - 1]);
         writeToBitMap(bit_loc, bitmap);
         // now remove the index from the disk map
         desc[desc_index].setDiskMap(j, -1);
         delete unpack;
     }
+    // set the file descriptor length to -1 and remove a file from the directory length
+    desc[desc_index].setLength(-1);
+    desc[DIR_INDEX].decLength(1);
     // clear the file name and index pointing to the descriptor
-    oft->clearFileName(i);
-    oft->clearDescIndex(i);
+    oft->clearFileName(ptr_to_file);
+    oft->clearDescIndex(ptr_to_file);
     return 0;
 }
 
-int Memory::getBitMap(int block_loc) {
+
+int Memory::generateBitMap(int block_loc) {
     UnPack *unpack = new UnPack();
     int start_pos = 0;
     int bitmap;

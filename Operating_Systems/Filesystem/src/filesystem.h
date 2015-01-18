@@ -1,6 +1,7 @@
 #ifndef FILESYSTEM_H
 #define FILESYSTEM_H 
 
+#include <cstdlib>
 #include <string>
 #include <vector>
 #include <iterator>
@@ -32,7 +33,7 @@ class FileSystem {
     
   public:
     // Constructors        
-    FileSystem();
+    FileSystem() : isInitialized(false) {}; 
 
     // Class Methods
     void setResponse(std::string r) { response = r; };
@@ -45,6 +46,7 @@ class FileSystem {
     void openFile(vecstr *in);
     int findAvailableDescriptorSlot();
     inline bool checkInitialization() { return isInitialized; };
+    void closeFile(vecstr *in);
 };
 
 

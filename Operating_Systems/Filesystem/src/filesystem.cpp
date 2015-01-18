@@ -1,10 +1,6 @@
 #include "filesystem.h"
 #include <iostream>
 
-FileSystem::FileSystem() {
-    isInitialized = false;
-}
-
 void FileSystem::initDisk(vecstr *in) {
     // Check and see if user provided a disk image
     if (in->size() >= 1) {
@@ -17,14 +13,13 @@ void FileSystem::initDisk(vecstr *in) {
 void FileSystem::createDisk() {
     // Initialize memery with bitmap and directory
     mem.initMemory();
-
-    // Copy the directory into index 0 of the OFT
-    oft[OFT_DIR_BLK].initDirectory();
-
-    unpack = new UnPack();
-    //int test1 = unpack->bytesToInt(oft[0].getBuf(), 20);
-    //int desc_test = unpack->bytesToInt(mem.getBlk(1), 16);
-    delete unpack;
+    
+    // initialize the oft to have disk access
+    for (int i = 0; i < OFT_SIZE; i++) {
+        oft[i].initDiskAccess(&disk);
+    }
+    // set the oft to non empty
+    oft[OFT_DIR_BLK].setEmpty(false);
     isInitialized = true;
     setResponse("disk initialized");
 }
@@ -44,15 +39,15 @@ void FileSystem::createFile(vecstr *in) {
             setResponse("disk is full");
         } else {
             // TODO: make sure you if this returns -1 to move over to index j and k 
-            int loc_in_dir_blk = oft[OFT_DIR_BLK].findEmptyDirLoc();
+            int ptr_to_filename = oft[OFT_DIR_BLK].findEmptyDirLoc();
             
             // find an open block to link the newly created file
-            int new_block = mem.findAvailableBlock(); 
+            int new_block_ptr = mem.findAvailableBlock(); 
 
             // First set the new block to the new descriptor, Second set the file name 
             // in the correct direcotry block and have its index point to the file descriptor
-            mem.createNewFileDescriptor(new_desc_index, new_block);
-            oft[OFT_DIR_BLK].setFileInDirBlk(loc_in_dir_blk, new_desc_index, file_name);
+            mem.createNewFileDescriptor(new_desc_index, new_block_ptr);
+            oft[OFT_DIR_BLK].setFileInDirBlk(ptr_to_filename, new_desc_index, file_name);
             setResponse(file_name + " created");
         }
     } else {
@@ -68,7 +63,8 @@ void FileSystem::deleteFile(vecstr *in) {
         // first find the name in the directory if it does not exist return error
         int ptr_to_desc = mem.findFileName(file_name, &oft[OFT_DIR_BLK]);
         if (ptr_to_desc != -1) {
-            mem.deleteFile(ptr_to_desc, &oft[OFT_DIR_BLK]);            
+            mem.deleteFile(ptr_to_desc, &oft[OFT_DIR_BLK]);
+            // TODO: you can modularize the function before to delete different sections            
             setResponse(file_name + " was deleted"); 
         } else {
             setResponse("file name does not exist");
@@ -83,7 +79,8 @@ void FileSystem::openFile(vecstr *in) {
     std::string file_name = in->front();
     int new_oft_index = -1;
     int length;
-    // got through the OFT and check for an empty spot
+    // go through the OFT and check for an empty spot, starting at 1 because
+    // 0 is always taken by the directory
     for (int i = 1; i < OFT_SIZE; i++) {
         if(oft[i].getIsEmpty()) {
             new_oft_index = i;
@@ -91,28 +88,43 @@ void FileSystem::openFile(vecstr *in) {
         } 
     }
     
-    // check and ses if the new oft index has a positive value, if not return an error
+    // check and see if the new oft index has a positive value, if not return an error
     if (new_oft_index != -1) {
         // first get the block that you will be copying over from the disk
-        byte *block;
-        int block_index = mem.findFileName(file_name, &oft[OFT_DIR_BLK]);
-        if (block_index == -1) {
+        int ptr_to_filename = mem.findFileName(file_name, &oft[OFT_DIR_BLK]);
+        if (ptr_to_filename == -1) {
             setResponse("file does not exist");
         } else {
-            int blk_num = mem.getBlockLocation(oft->getDescIndex(block_index), 0);
-            disk.read_block(blk_num, block);
-            length = mem.getFileLength(oft->getDescIndex(block_index));
-            oft[new_oft_index].read(block, new_oft_index, 0, length);
+            int desc_index = oft->getDescIndex(ptr_to_filename);
+            int blk_num = mem.getBlockLocation(desc_index, 0);
+            length = mem.getFileLength(desc_index);
+            
+            // read disk block into buffer
+            oft[new_oft_index].read(blk_num, desc_index, 0, length);
             setResponse(file_name + " opened " + std::to_string(new_oft_index));
         }
 
     } else {
         setResponse("OFT is full");
     }
-
-
-
-
 }
 
+void FileSystem::closeFile(vecstr *in) {
+    // test to see if the second input is a digit between 1 and 3
+    int oft_index = stoi(in->front());
+    if (oft_index >= 1 && oft_index <= 3) {
+         // get the current block that is open and save it to disk
+        int curr_pos = oft[oft_index].getCurrentPos();
+        int disk_map = (curr_pos / BLOCK_LENGTH) + 1;
+        int blk_num = mem.getBlockLocation(oft[oft_index].getIndex(), disk_map);  
+        byte *buf = oft[oft_index].getBuf();
+        disk.write_block(blk_num, buf);
+        // reset the oft parameters
+        oft[oft_index].resetParam();
+    } else {
+        setResponse("not a valid use of cl");
+    }
 
+   
+
+}
