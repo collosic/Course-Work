@@ -100,9 +100,11 @@ class OFT {
     int findEmptyDirLoc();
     void setFileInDirBlk(int file_loc, int desc_index, std::string name);
     
-    void seek(int new_pos, Descriptor *desc);
+    void seek(int new_pos, int old_pos, Descriptor *desc);
     int read(int blk_num, int i, int c_pos, int l);
     void resetParam();
+    byte read_byte(int i) { return buffer[i]; };
+    void write_byte(byte ch, int i) { buffer[i] = ch; };
 
     inline void setCurrentPos(int pos) { current_pos = pos; };
     inline void setIndex(int i) { index = i; };
@@ -159,6 +161,9 @@ class Memory {
     void writeToBitMap(int blk_loc, int bitmap);
     inline int getFileLength(int i) { return desc[i].getLength(); };
     inline int getBlockLocation(int i, int j) { return desc[i].getDiskMapLoc(j); };
+    inline Descriptor* getDescriptor(int i) { return &desc[i]; };
+    inline void setDiskMap(int i, int disk_i, int blk) { desc[i].setDiskMap(disk_i, blk); };
+    inline void setDescLength(int i, int l) { desc[i].setLength(l); };
 };
 
 

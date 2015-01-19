@@ -37,13 +37,13 @@ std::string Driver::interface(vecstr *in) {
                     break;
         case 4:     fs.closeFile(in); 
                     break;
-        case 5:     response = "";
+        case 5:     fs.read(in); 
                     break;
-        case 6:     response = "";
+        case 6:     fs.write(in); 
                     break;
-        case 7:     response = "";
+        case 7:     fs.seek(in); 
                     break;
-        case 8:     response = "";
+        case 8:     fs.listDirectory(in);
                     break;
         case 9:     fs.initDisk(in);
                     break;

@@ -6,6 +6,8 @@
 #include <vector>
 #include <iterator>
 #include <unordered_map>
+#include <limits>
+#include <regex>
 
 #include "disk.h"
 #include "cache.h"
@@ -14,6 +16,7 @@
 #define OFT_SIZE 4
 #define MEM_DIR_BLK 1
 #define OFT_DIR_BLK 0
+#define FILE_LIMIT 192
 
 // Type Definitions
 typedef std::vector<std::string> vecstr;
@@ -44,9 +47,15 @@ class FileSystem {
     void createFile(vecstr *in);
     void deleteFile(vecstr *in);
     void openFile(vecstr *in);
+    void read(vecstr *in);
+    void write(vecstr *in);
+    void seek(vecstr *in);
+    void listDirectory(vecstr *in);
     int findAvailableDescriptorSlot();
     inline bool checkInitialization() { return isInitialized; };
     void closeFile(vecstr *in);
+    bool isInteger(std::string s);
+    bool isLetter(std::string s);
 };
 
 

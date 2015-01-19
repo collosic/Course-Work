@@ -19,7 +19,7 @@ Memory::Memory() {
 
 int OFT::findEmptyDirLoc() {
     // look for an empty file location in the directory
-    for (int i = 0; i < NUM_FILE_PER_BLK; ++i) {
+    for (int i = 0; i < NUM_FILE_PER_BLK * 3; ++i) {
         if (dir_block[i].getIndex() == EMPTY_LOC) {
             return i;
         }
@@ -39,9 +39,9 @@ void OFT::setFileInDirBlk(int file_loc, int desc_index, std::string name) {
 
 // 
 
-void OFT::seek(int new_pos, Descriptor *desc) {
-    int new_disk_map_index = (new_pos / BLOCK_LENGTH) + 1;
-    int old_disk_map_index = (current_pos / BLOCK_LENGTH) + 1;
+void OFT::seek(int new_pos, int old_pos, Descriptor *desc) {
+    int new_disk_map_index = new_pos / BLOCK_LENGTH;
+    int old_disk_map_index = old_pos / BLOCK_LENGTH;
     // see if the we are currently in the correct block 
     if(old_disk_map_index != new_disk_map_index) {
         // get the block number that we need to read into the buffer
@@ -49,7 +49,7 @@ void OFT::seek(int new_pos, Descriptor *desc) {
         int old_blk_num = desc->getDiskMapLoc(old_disk_map_index);
         // write the current block back to disk and then read in the new one
         disk->write_block(old_blk_num, buffer);
-        read(new_blk_num, index, new_pos, length);
+        read(new_blk_num, this->index, new_pos, this->length);
     }
     current_pos = new_pos;
 }
@@ -245,7 +245,10 @@ int Memory::findFileName(std::string file_name, OFT *oft) {
     // this loop will find the name of the file and returns a ptr index to that file
     for (int i = 0; i < dir_length; i++) {
         if (i % NUM_FILE_PER_BLK == 0) {
-            oft->seek(i * NUM_FILE_PER_BLK, &desc[DIR_INDEX]);
+            int new_p = i * NUM_FILE_PER_BLK;
+            int old_p = (i * NUM_FILE_PER_BLK) - 1;
+            oft->seek(new_p, old_p, &desc[DIR_INDEX]);
+
         }
         if (file_name.compare(oft->getFileName(i)) == 0) {
             // clear the block
