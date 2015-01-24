@@ -17,7 +17,8 @@
 #define MEM_DIR_BLK 1
 #define OFT_DIR_BLK 0
 #define FILE_LIMIT 192
-
+#define DIR_DESC 0
+#define BLOCK_LENGTH 64
 // Type Definitions
 typedef std::vector<std::string> vecstr;
 
@@ -50,12 +51,15 @@ class FileSystem {
     void read(vecstr *in);
     void write(vecstr *in);
     void seek(vecstr *in);
-    void listDirectory(vecstr *in);
+    void save(vecstr *in);
+    void listDirectory();
+    int findName();
     int findAvailableDescriptorSlot();
     inline bool checkInitialization() { return isInitialized; };
     void closeFile(vecstr *in);
     bool isInteger(std::string s);
     bool isLetter(std::string s);
+    void wrongArg(std::string comm) { response = "entered incorrect amount of arguments for " + comm; };
 };
 
 

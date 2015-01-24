@@ -84,14 +84,14 @@ class Descriptor {
 
 class OFT {
   private:
-    File dir_block[8];
+    File dir_block[NUM_FILE_PER_BLK];
     Disk *disk;
     byte buffer[BLOCK_LENGTH];
     int current_pos;
     int index;
     int length;
     bool isEmpty;
- 
+
   public:
     OFT();
     
@@ -105,6 +105,10 @@ class OFT {
     void resetParam();
     byte read_byte(int i) { return buffer[i]; };
     void write_byte(byte ch, int i) { buffer[i] = ch; };
+    void readDirFromBuffer();
+    void writeDirToBuffer();
+    void resetFiles();
+    
 
     inline void setCurrentPos(int pos) { current_pos = pos; };
     inline void setIndex(int i) { index = i; };
@@ -123,12 +127,14 @@ class OFT {
 
 class Memory {
   private:
-    Descriptor desc[24];
+    Disk *disk;
+    Descriptor desc[MAX_NUM_DESC];
     byte memory_blks[NUM_BLOCKS][BLOCK_LENGTH];
-    int dir_slots[MAX_NUM_BLKS];
     byte slot;
     byte offset;
     int bitMask[BIT_MASK_SIZE];
+    Pack pack;
+    UnPack unpack;
 
     // Private Functions
     void setBit(int *num, int x) { *num |= x; };
@@ -139,7 +145,7 @@ class Memory {
   public:
     Memory();
     
-    void initMemory();  
+    void initMemory(Disk *ldisk);  
     void clearBlock(int block_num);
     void setBitMapLocation(byte bit_loc);
     void generateBitMask();
@@ -164,6 +170,7 @@ class Memory {
     inline Descriptor* getDescriptor(int i) { return &desc[i]; };
     inline void setDiskMap(int i, int disk_i, int blk) { desc[i].setDiskMap(disk_i, blk); };
     inline void setDescLength(int i, int l) { desc[i].setLength(l); };
+    void saveDescriptors();
 };
 
 

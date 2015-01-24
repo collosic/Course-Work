@@ -12,14 +12,16 @@ Memory::Memory() {
     // 
     int dir = INT_SIZE;
     for (int i = 0; i < MAX_NUM_BLKS; i++) {
-        dir_slots[i] = dir;
+    //    dir_slots[i] = dir;
         dir += INT_SIZE;
     }
 }
 
 int OFT::findEmptyDirLoc() {
     // look for an empty file location in the directory
-    for (int i = 0; i < NUM_FILE_PER_BLK * 3; ++i) {
+    for (int i = 0; i < NUM_FILE_PER_BLK; ++i) {
+        // update the current pos
+        this->current_pos += SLOT_SIZE;
         if (dir_block[i].getIndex() == EMPTY_LOC) {
             return i;
         }
@@ -32,6 +34,7 @@ void OFT::setFileInDirBlk(int file_loc, int desc_index, std::string name) {
     // prep the file for a write
     dir_block[file_loc].setName((char*) name.c_str());
     dir_block[file_loc].setIndex(desc_index); 
+    this->length++;
     //std::memcpy((buffer + file_loc), (char*) name.c_str(), length + 1);
     //pack->intToBytes(buffer, file_loc + 4, desc_index);  
 
@@ -67,7 +70,41 @@ int OFT::read(int blk_num, int i, int c_pos, int l) {
     return 0;
 }
 
+void OFT::writeDirToBuffer() {
+    Pack *pack = new Pack();
+    for (int i = 0; i < NUM_FILE_PER_BLK; i++) {
+        // for each file write the name and the index to the buffer
+        const char *chars = dir_block[i].getName().c_str();
+        int offset = i * NUM_FILE_PER_BLK;
+        for (int j = offset; j < INT_SIZE; j++) {
+            write_byte(chars[j - offset], j);   
+        }
+        int file_index = dir_block[i].getIndex();
+        pack->intToBytes(buffer, offset + INT_SIZE, file_index);  
+    }
+    delete pack;
+}
 
+
+void OFT::readDirFromBuffer() {
+    UnPack *unpack = new UnPack();
+    for (int i = 0; i < NUM_FILE_PER_BLK; i += SLOT_SIZE) {
+        std::string name;
+        int offset = i * NUM_FILE_PER_BLK;
+        for (int j = offset; j < INT_SIZE; j++) {
+            name += read_byte(j);
+        }
+        unpack->bytesToInt(buffer, offset + INT_SIZE); 
+    } 
+    delete unpack;
+}
+
+void OFT::resetFiles() {
+    for (int i = 0; i < NUM_FILE_PER_BLK; i++) {
+        dir_block[i].setName("");
+        dir_block[i].setIndex(-1);     
+    }
+}
 void OFT::resetParam() {
     // reset all the oft parameters
     current_pos = -1;
@@ -80,7 +117,7 @@ void OFT::resetParam() {
 
 
 
-void Memory::initMemory() {
+void Memory::initMemory(Disk *ldisk) {
     Pack *pack = new Pack();
     int bitMap = 0;
     
@@ -101,6 +138,7 @@ void Memory::initMemory() {
     // our first directory block.
     desc[0].setDiskMap(0, 7);
     //createDirectory();
+    disk = ldisk;
     delete pack;
 }
 
@@ -223,7 +261,7 @@ void Memory::createNewFileDescriptor(int desc_index, int blk_num) {
     desc[desc_index].setDiskMap(0, blk_num);
     // increment the file count
     desc[DIR_INDEX].incLength(1);
-
+    desc[DIR_INDEX].incLength(1);
     /*
     Pack *pack = new Pack();
     // determine the descriptor block and offset
@@ -240,23 +278,28 @@ void Memory::createNewFileDescriptor(int desc_index, int blk_num) {
 
 
 int Memory::findFileName(std::string file_name, OFT *oft) {
-    int dir_length = desc[DIR_INDEX].getLength();
-    
     // this loop will find the name of the file and returns a ptr index to that file
-    for (int i = 0; i < dir_length; i++) {
-        if (i % NUM_FILE_PER_BLK == 0) {
-            int new_p = i * NUM_FILE_PER_BLK;
-            int old_p = (i * NUM_FILE_PER_BLK) - 1;
-            oft->seek(new_p, old_p, &desc[DIR_INDEX]);
-
+    for (int i = 0; i < NUM_FILE_PER_BLK; i++) {
+        int offset = i * NUM_FILE_PER_BLK;
+        if (offset % BLOCK_LENGTH == 0) {
+            int next_blk = desc[DIR_INDEX].getDiskMapLoc(offset / BLOCK_LENGTH);
+            // if next blk is -1 then we've reached the end of our search
+            if (next_blk == -1) return next_blk;
+            int curr_blk = desc[DIR_INDEX].getDiskMapLoc((offset / BLOCK_LENGTH) - 1);
+            oft->writeDirToBuffer();
+            disk->write_block(curr_blk, oft->getBuf());
+            oft->seek(offset, offset - 1, &desc[DIR_INDEX]);
+            oft->readDirFromBuffer();
         }
+        oft->setCurrentPos(i);
         if (file_name.compare(oft->getFileName(i)) == 0) {
-            // clear the block
             return i;
         }          
     } 
     return -1;   
 }
+
+
 
 
 int Memory::deleteFile(int ptr_to_file, OFT *oft) {
@@ -310,6 +353,31 @@ void Memory::writeToBitMap(int blk_loc, int bitmap) {
     }
     pack->intToBytes(memory_blks[0], 0 + start_pos, bitmap); 
     delete pack;
+}
+
+
+void Memory::saveDescriptors() {
+    for (int i = 0; i < MAX_NUM_DESC; i++) {
+        for (int j = 1; j < CACHE_BLK_SIZE; j++) {
+            for (int k = 0; k < 4; k++) {
+                int offset = k * DESCRIPTOR_SIZE;
+                // place the length of the file into 4 bytes
+                pack.intToBytes(memory_blks[j], offset, desc[i].getLength());    
+                // save the disk map to the memory block
+                for (int l = 0; l < MAX_NUM_BLKS; l++) {
+                    offset += INT_SIZE;
+                    int blk_num = desc[i].getDiskMapLoc(l); 
+                    pack.intToBytes(memory_blks[j], offset, blk_num); 
+                }
+            }
+        }         
+    }
+    // For simplicity I saved it first to a local disk and now we 
+    // can save it to the ldisk.  The ldisk may be used above instead
+    // of the local memory block.
+    for (int i = 0; i < CACHE_BLK_SIZE; i++) {
+        disk->write_block(i, memory_blks[i]);
+ i   }
 }
 
 void Pack::intToBytes(byte *block, int offset, int val) {

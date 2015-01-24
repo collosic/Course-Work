@@ -19,7 +19,10 @@ std::string Driver::interface(vecstr *in) {
     
     // check and see if the FS has been initialized if the command is not "in"
     if (command.compare("in") != 0) {
-        if (fs.checkInitialization() == false) return "you must first initialize a disk";
+        if (fs.checkInitialization() == false) {
+            in->clear();
+            return "you must first initialize a disk";
+        }
     }
 
     // remove the first element that was extracted into command
@@ -27,27 +30,29 @@ std::string Driver::interface(vecstr *in) {
      
     std::unordered_map<std::string, int>::const_iterator value = map.find(command);
     std::string response;
- 
+    
+    // we need to evaluate the command and then determine if the user has typed
+    // in too many arguments for each command
     switch (value->second) {
-        case 1:     fs.createFile(in); 
+        case 1:     in->size() != 1 ? fs.wrongArg(command) : fs.createFile(in); 
                     break;
-        case 2:     fs.deleteFile(in); 
+        case 2:     in->size() != 1 ? fs.wrongArg(command) : fs.deleteFile(in); 
                     break;
-        case 3:     fs.openFile(in); 
+        case 3:     in->size() != 1 ? fs.wrongArg(command) : fs.openFile(in); 
                     break;
-        case 4:     fs.closeFile(in); 
+        case 4:     in->size() != 1 ? fs.wrongArg(command) : fs.closeFile(in); 
                     break;
-        case 5:     fs.read(in); 
+        case 5:     in->size() != 2 ? fs.wrongArg(command) : fs.read(in); 
                     break;
-        case 6:     fs.write(in); 
+        case 6:     in->size() != 3 ? fs.wrongArg(command) : fs.write(in); 
                     break;
-        case 7:     fs.seek(in); 
+        case 7:     in->size() != 2 ? fs.wrongArg(command) : fs.seek(in); 
                     break;
-        case 8:     fs.listDirectory(in);
+        case 8:     in->size() != 0 ? fs.wrongArg(command) : fs.listDirectory();
                     break;
-        case 9:     fs.initDisk(in);
+        case 9:     in->size() > 1 ? fs.wrongArg(command) : fs.initDisk(in);
                     break;
-        case 10:    response = "";
+        case 10:    in->size() != 1 ? fs.wrongArg(command) : fs.save(in);
                     break;
         default:    response = "Invalid command entered";
                     break;
