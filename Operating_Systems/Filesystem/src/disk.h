@@ -1,6 +1,9 @@
 #ifndef DISK_H
 #define DISK_H 
 
+#include <string>
+#include <fstream>
+
 // Constants
 #define NUM_BLOCKS 64
 #define BLOCK_LENGTH 64
@@ -23,6 +26,8 @@ class Disk {
     byte* getBlkAddr(int blk_num) { return ldisk[blk_num]; };
     void read_block(int blk_num, byte *p);
     void write_block(int blk_num, byte *p);
+    void saveData(std::string data_name);
+    int loadData(std::string data_name);
 };
 
 

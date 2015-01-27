@@ -75,6 +75,8 @@ void FileSystem::createFile(vecstr *in) {
             // in the correct direcotry block and have its index point to the file descriptor
             mem.createNewFileDescriptor(new_desc_index, new_block_ptr);
             oft[OFT_DIR_BLK].setFileInDirBlk(ptr_to_filename, new_desc_index, file_name);
+            // increment the length in oft 0 using the descriptor length
+            oft[OFT_DIR_BLK].setLength(mem.getFileLength(new_desc_index));
             // TODO: increment the length
             setResponse(file_name + " created");
         }
@@ -191,7 +193,6 @@ void FileSystem::read(vecstr *in) {
 
 
 void FileSystem::write(vecstr *in) {
-    int num_inputs = in->size();
     std::string oft_i = in->front();
     in->erase(in->begin());
     std::string characters = in->front();
@@ -200,20 +201,32 @@ void FileSystem::write(vecstr *in) {
     end_p = in->front();
     in->erase(in->begin());
     
+    int size = characters.size();
+    // this flag is used for when a user attempts to write beyond the length or size
+    // of the file.
+    response = "";
 
+    // check if file is open first
+    if (oft[stoi(oft_i)].getIsEmpty()) {
+        setResponse("file is not open");
+        return -1;
+    }
+    
     // check and see if the strings are formated correctly and have the correct input
     if(isInteger(oft_i) && isLetter(characters) && isInteger(end_p)) {
         int oft_index = stoi(oft_i);
         int end_pos = stoi(end_p);
-        int curr_pos = oft[oft_index].getCurrentPos();
+        int start_pos = oft[oft_index].getCurrentPos();
         int length = oft[oft_index].getLength();
         int bytes_written = 0;
         int desc_index = oft[oft_index].getIndex();   
         const char *chars = characters.c_str(); 
 
-        for (int i = curr_pos; i < curr_pos + end_pos; i++) {
-            if (i >= FILE_LIMIT) 
+        for (int i = start_pos; i < start_pos + end_pos; i++) {
+            if (i >= FILE_LIMIT) {
+                response += "file limit reached, only ";
                 break;
+            }
             // if the bytes being written goes beyond the block, create that new block
             if (i % BLOCK_LENGTH == 0) {
                 // check and see if the next block exists
@@ -226,8 +239,8 @@ void FileSystem::write(vecstr *in) {
                 }
                 oft[oft_index].seek(i, i - 1, mem.getDescriptor(desc_index));
             } 
-            // check to see if the wr command was used with its shortcut 
-            oft[oft_index].write_byte(chars[i - curr_pos], i % BLOCK_LENGTH);
+            // depending on the character/s we need to insert that char into the block 
+            oft[oft_index].write_byte(chars[(i - start_pos) % size], i % BLOCK_LENGTH);
             oft[oft_index].setCurrentPos(i + 1); 
             if (i >= length) {
                 mem.setDescLength(desc_index, length + 1);
@@ -236,11 +249,12 @@ void FileSystem::write(vecstr *in) {
             length++;
             bytes_written++;
         }
-        setResponse(std::to_string(bytes_written) + " bytes written");
+        response += std::to_string(bytes_written) + " bytes written";
 
     } else {
         setResponse("invalid use of wr");
     }
+    return 0;
 }
 
 
@@ -301,18 +315,21 @@ void FileSystem::save(vecstr *in) {
     
     // now save the entire oft to the ldisk
     for (int i = 0; i < OFT_SIZE; i++) {
+        if (oft[i].getIsEmpty()) 
+            continue;
         int curr_pos = oft[i].getCurrentPos();
         int desc_index = oft[i].getIndex(); 
         int dir_blk = mem.getBlockLocation(desc_index, curr_pos / BLOCK_LENGTH); 
-        disk.write_block(dir_blk, oft[OFT_DIR_BLK].getBuf());
+        disk.write_block(dir_blk, oft[i].getBuf());
     }
 
     // save the descriptor to disk
     mem.saveDescriptors();
 
-    // now save the disk to a file
-    
+    // now write the ldisk to a file
+    disk.saveData(disk_name);
 }
+
 bool FileSystem::isInteger(std::string s) {
     const char *test = s.c_str();
     char *end;    

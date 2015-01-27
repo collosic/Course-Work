@@ -34,10 +34,8 @@ void OFT::setFileInDirBlk(int file_loc, int desc_index, std::string name) {
     // prep the file for a write
     dir_block[file_loc].setName((char*) name.c_str());
     dir_block[file_loc].setIndex(desc_index); 
-    this->length++;
-    //std::memcpy((buffer + file_loc), (char*) name.c_str(), length + 1);
-    //pack->intToBytes(buffer, file_loc + 4, desc_index);  
-
+    // need to update the current pos by 8 bytes. 4 for the name and 4 for the index
+    current_pos += SLOT_SIZE;
 }
 
 // 
@@ -76,7 +74,7 @@ void OFT::writeDirToBuffer() {
         // for each file write the name and the index to the buffer
         const char *chars = dir_block[i].getName().c_str();
         int offset = i * NUM_FILE_PER_BLK;
-        for (int j = offset; j < INT_SIZE; j++) {
+        for (int j = offset; j < INT_SIZE + offset; j++) {
             write_byte(chars[j - offset], j);   
         }
         int file_index = dir_block[i].getIndex();
@@ -261,18 +259,6 @@ void Memory::createNewFileDescriptor(int desc_index, int blk_num) {
     desc[desc_index].setDiskMap(0, blk_num);
     // increment the file count
     desc[DIR_INDEX].incLength(1);
-    desc[DIR_INDEX].incLength(1);
-    /*
-    Pack *pack = new Pack();
-    // determine the descriptor block and offset
-    int desc_blk = file_loc / BLOCK_LENGTH;
-    int slot_offset = file_loc % BLOCK_LENGTH;
-
-    // write the length (zero) of the file followed by the index to its first block
-    pack->intToBytes(memory_blks[desc_blk], slot_offset, 0);
-    pack->intToBytes(memory_blks[desc_blk], slot_offset + INT_SIZE, blk_num); 
-    delete pack;
-    */
 }
 
 
@@ -357,27 +343,26 @@ void Memory::writeToBitMap(int blk_loc, int bitmap) {
 
 
 void Memory::saveDescriptors() {
-    for (int i = 0; i < MAX_NUM_DESC; i++) {
-        for (int j = 1; j < CACHE_BLK_SIZE; j++) {
-            for (int k = 0; k < 4; k++) {
-                int offset = k * DESCRIPTOR_SIZE;
-                // place the length of the file into 4 bytes
-                pack.intToBytes(memory_blks[j], offset, desc[i].getLength());    
-                // save the disk map to the memory block
-                for (int l = 0; l < MAX_NUM_BLKS; l++) {
-                    offset += INT_SIZE;
-                    int blk_num = desc[i].getDiskMapLoc(l); 
-                    pack.intToBytes(memory_blks[j], offset, blk_num); 
-                }
+    for (int i = 1; i < CACHE_BLK_SIZE; i++) {
+        for (int j = 0; j < 4; j++) {
+            int offset = j * DESCRIPTOR_SIZE;
+            int desc_offset = 4 * (i - 1);
+            // place the length of the file into 4 bytes
+            pack.intToBytes(memory_blks[i], offset, desc[j + desc_offset].getLength());    
+            // save the disk map to the memory block
+            for (int l = 0; l < MAX_NUM_BLKS; l++) {
+                offset += INT_SIZE;
+                int blk_num = desc[j + desc_offset].getDiskMapLoc(l); 
+                pack.intToBytes(memory_blks[i], offset, blk_num); 
             }
-        }         
+        }
     }
     // For simplicity I saved it first to a local disk and now we 
     // can save it to the ldisk.  The ldisk may be used above instead
     // of the local memory block.
     for (int i = 0; i < CACHE_BLK_SIZE; i++) {
         disk->write_block(i, memory_blks[i]);
- i   }
+    }
 }
 
 void Pack::intToBytes(byte *block, int offset, int val) {

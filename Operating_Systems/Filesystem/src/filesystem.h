@@ -37,10 +37,11 @@ class FileSystem {
     
   public:
     // Constructors        
-    FileSystem() : isInitialized(false) {}; 
+    FileSystem() : response(""), isInitialized(false) {}; 
 
     // Class Methods
     void setResponse(std::string r) { response = r; };
+    void concatResponse(std::string s) { response += s; };
     std::string getResponse() { return response; };
     void initDisk(vecstr *in);    
     void createDisk();
