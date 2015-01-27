@@ -1,2 +1,5 @@
 # Ignore any executables and file creation
 src/*
+.classpath
+.settings/*
+tests_public/*

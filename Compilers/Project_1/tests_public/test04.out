@@ -1,3 +1,0 @@
-EQUAL(lineNum:1, charPos:1)
-EQUAL(lineNum:1, charPos:3)
-EOF(lineNum:2, charPos:1)

@@ -1,0 +1,4 @@
+bin/
+tests/*
+.settings/*
+project2_test.py
