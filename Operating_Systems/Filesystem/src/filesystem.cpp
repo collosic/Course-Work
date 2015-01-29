@@ -2,17 +2,27 @@
 #include <iostream>
 
 void FileSystem::initDisk(vecstr *in) {
-    // Check and see if user provided a disk image
-    if (in->size() >= 1) {
-       //loadDisk(in->front());
+    // Before anything can start we need to give the oft access to the disk
+    // this only needs to be ran once
+    if (!(isInitialized)) {
+        for (int i = 0; i < OFT_SIZE; i++) {
+            oft[i].diskAccess(&disk);        
+        }
+    }
+
+    // check and see if we need to load an image 
+    if (in->size() == 1) {
+       loadDisk(in->front());
+       in->erase(in->begin());
     } else {
         createDisk();
     }
 }
+
 // TODO: Make sure each command only excepts a certain amount of strings
 void FileSystem::createDisk() {
     // Initialize memery with bitmap and directory
-    mem.initMemory(&disk);
+    mem.initMemory();
     
     // initialize the oft to have disk access
     for (int i = 0; i < OFT_SIZE; i++) {
@@ -25,13 +35,41 @@ void FileSystem::createDisk() {
 }
 
 void FileSystem::loadDisk(std::string file_name) {
-    
+    // call the disk to open the disk file and read it in
+    if (!(disk.loadData(file_name))) {
+        // initially this was supposed to be an error, but not is will just initialize
+        createDisk();
+    } else {
+        mem.flushDescriptors();
+        // load the descriptors into memory
+        mem.loadDescriptors();
+
+        // flush out the contents of the buffers and files
+        // ** In my design I should have separated the directory from the oft 
+        // this is why we see redundancy
+        for (int i = 0; i < OFT_SIZE; i++) {
+            oft[i].resetFiles();
+            oft[i].resetParam();
+        }
+        // load the first directory into oft 0, setting current position to 0
+        int dir_blk =  mem.getBlockLocation(DIR_DESC, 0);
+        int dir_length = mem.getFileLength(DIR_DESC);
+        oft[OFT_DIR_BLK].read(dir_blk, DIR_DESC, 0, dir_length);
+        
+        // load file name into object from buffer
+        oft[OFT_DIR_BLK].readDirFromBuffer();
+        isInitialized = true;
+
+        setResponse("disk restored");
+        
+    }
 }
 
 // create a file by calling the various parts of cache and disk
 void FileSystem::createFile(vecstr *in) {
     std::string file_name = in->front();
     in->erase(in->begin());
+    int off;
     // TODO: make sure you check if files can digits for names
     if (file_name.length() <= 3) {
         // Search the directory for an empty slot
@@ -42,32 +80,40 @@ void FileSystem::createFile(vecstr *in) {
             // this should always return an empty directory location because 
             // there exists an available descriptor slot 
             int curr_pos = oft[OFT_DIR_BLK].getCurrentPos();
+            oft[OFT_DIR_BLK].writeDirToBuffer();
             oft[OFT_DIR_BLK].seek(0, curr_pos, mem.getDescriptor(DIR_DESC)); 
+            oft[OFT_DIR_BLK].resetFiles();
+            oft[OFT_DIR_BLK].readDirFromBuffer();
             int ptr_to_filename = -1;
-            for (int i = 0; i < 3; i++) {
+            for (int i = 1; i < 3; i++) {
                 int offset = i * BLOCK_LENGTH;
                 ptr_to_filename = oft[OFT_DIR_BLK].findEmptyDirLoc();
                 if (ptr_to_filename == -1) {
                     // Now we need to go to the next block or create a new one
-                    int next_blk = mem.getBlockLocation(OFT_DIR_BLK, i + 1);
-                    int curr_blk = mem.getBlockLocation(OFT_DIR_BLK, i);
+                    off = offset;
+                    int next_blk = mem.getBlockLocation(OFT_DIR_BLK, i);
+                    int curr_blk = mem.getBlockLocation(OFT_DIR_BLK, i - 1);
                     if (next_blk == -1) {
                         next_blk = mem.findAvailableBlock();
-                        mem.setDiskMap(DIR_DESC, i + 1, next_blk);
+                        mem.setDiskMap(DIR_DESC, i, next_blk);
                         oft[OFT_DIR_BLK].writeDirToBuffer();
                         disk.write_block(curr_blk, oft[OFT_DIR_BLK].getBuf());
                         oft[OFT_DIR_BLK].resetFiles();
+                        ptr_to_filename = 0;
+                        break;
                     } else {
                         // seek to the new block, for directory we need to write to the buffer first
                         oft[OFT_DIR_BLK].writeDirToBuffer();
                         disk.write_block(curr_blk, oft[OFT_DIR_BLK].getBuf());
                         oft[OFT_DIR_BLK].seek(offset, offset - 1, mem.getDescriptor(0));
+                        oft[OFT_DIR_BLK].resetFiles();
                         oft[OFT_DIR_BLK].readDirFromBuffer();                
                     }
                 } else {
                     break;
                 } // end of if prt to file
             } // end of for loop
+            oft[OFT_DIR_BLK].setCurrentPos(off);
             // find an open block to link the newly created file
             int new_block_ptr = mem.findAvailableBlock(); 
 
@@ -76,7 +122,7 @@ void FileSystem::createFile(vecstr *in) {
             mem.createNewFileDescriptor(new_desc_index, new_block_ptr);
             oft[OFT_DIR_BLK].setFileInDirBlk(ptr_to_filename, new_desc_index, file_name);
             // increment the length in oft 0 using the descriptor length
-            oft[OFT_DIR_BLK].setLength(mem.getFileLength(new_desc_index));
+            oft[OFT_DIR_BLK].setLength(mem.getFileLength(DIR_DESC));
             // TODO: increment the length
             setResponse(file_name + " created");
         }
@@ -149,7 +195,7 @@ void FileSystem::closeFile(vecstr *in) {
         int curr_pos = oft[oft_index].getCurrentPos();
         int disk_map = curr_pos / BLOCK_LENGTH;
         int blk_num = mem.getBlockLocation(oft[oft_index].getIndex(), disk_map);  
-        byte *buf = oft[oft_index].getBuf();
+        char *buf = oft[oft_index].getBuf();
         disk.write_block(blk_num, buf);
         // reset the oft parameters
         oft[oft_index].resetParam();
@@ -158,7 +204,7 @@ void FileSystem::closeFile(vecstr *in) {
     }
 }
 
-
+// TODO: block against reading from oft 0
 void FileSystem::read(vecstr *in) {
     std::string oft_i = in->front();
     in->erase(in->begin());   
@@ -209,7 +255,6 @@ void FileSystem::write(vecstr *in) {
     // check if file is open first
     if (oft[stoi(oft_i)].getIsEmpty()) {
         setResponse("file is not open");
-        return -1;
     }
     
     // check and see if the strings are formated correctly and have the correct input
@@ -254,7 +299,6 @@ void FileSystem::write(vecstr *in) {
     } else {
         setResponse("invalid use of wr");
     }
-    return 0;
 }
 
 
@@ -284,24 +328,35 @@ void FileSystem::seek(vecstr *in) {
 void FileSystem::listDirectory() {
     std::string all_files;
     int desc_index = 0; // we know that the descriptor index is 0
+    int num_desc_per_blk = 16;
+
+    // need to first seek to the first block of the directory
+    int curr_pos = oft[OFT_DIR_BLK].getCurrentPos();
+    desc_index = oft[OFT_DIR_BLK].getDescIndex(DIR_DESC);
+    oft[OFT_DIR_BLK].seek(0, curr_pos, mem.getDescriptor(0));
+    oft[OFT_DIR_BLK].resetFiles();
+    oft[OFT_DIR_BLK].readDirFromBuffer();
 
     for (int i = 0; i < 23; i++) {
         // first seek the directory 
-        int j = i * 8; 
-        if (j % BLOCK_LENGTH == 0 && j / BLOCK_LENGTH != 0) {
-            int next_blk = mem.getBlockLocation(desc_index, j / BLOCK_LENGTH);
+        int j = i * SLOT_SIZE;
+        if (i % 8 == 0 && i != 0) {
+            int next_blk = mem.getBlockLocation(DIR_DESC, j / BLOCK_LENGTH);
             // check and see if we need to allocate a new block
             if (next_blk == -1) {
                 break;
             }
-            oft[OFT_DIR_BLK].seek(i / BLOCK_LENGTH, j - 1, mem.getDescriptor(0));
+            oft[OFT_DIR_BLK].seek(j, j - 1, mem.getDescriptor(0));
+            oft[OFT_DIR_BLK].resetFiles();
+            oft[OFT_DIR_BLK].readDirFromBuffer();
             // Now we need to place the new block into 
         }
-        std::string s = oft[OFT_DIR_BLK].getFileName(i);
-        oft[OFT_DIR_BLK].setCurrentPos(j + 4); 
-        if (isLetter(s)) {
+        std::string s = oft[OFT_DIR_BLK].getFileName(i % 8);
+        desc_index = oft[OFT_DIR_BLK].getDescIndex(i % 8);
+        if (desc_index > -1)
             all_files += s + " ";
-        }
+
+        oft[OFT_DIR_BLK].setCurrentPos(j + 4); 
     }
     setResponse(all_files);
 }
@@ -327,7 +382,11 @@ void FileSystem::save(vecstr *in) {
     mem.saveDescriptors();
 
     // now write the ldisk to a file
-    disk.saveData(disk_name);
+    if (disk.saveData(disk_name)) {
+        setResponse("disk saved");
+    } else {
+        setResponse("could not save disk");
+    }
 }
 
 bool FileSystem::isInteger(std::string s) {

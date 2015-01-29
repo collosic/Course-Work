@@ -2,6 +2,8 @@
 #define DRIVER_H   
 #include <iostream>
 #include <sstream>
+#include <fstream>
+#include <string>
 
 // Header Files
 #include "filesystem.h"
@@ -20,9 +22,10 @@ class Driver {
   public:
     // Constructors
     Driver();
+    ~Driver();
 
     // Class Methods
-    std::string interface(std::vector<std::string> *in); 
+    std::string interface(vecstr *in); 
 
 };
 

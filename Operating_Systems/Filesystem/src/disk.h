@@ -17,17 +17,17 @@ void clearBitmap();
 // Classes
 class Disk {
   private:
-    byte ldisk[NUM_BLOCKS][BLOCK_LENGTH];
+    char ldisk[NUM_BLOCKS][BLOCK_LENGTH];
     // Private Functions
   public:
     Disk();
 
     // Public Functions
-    byte* getBlkAddr(int blk_num) { return ldisk[blk_num]; };
-    void read_block(int blk_num, byte *p);
-    void write_block(int blk_num, byte *p);
-    void saveData(std::string data_name);
-    int loadData(std::string data_name);
+    char* getBlkAddr(int blk_num) { return ldisk[blk_num]; };
+    void read_block(int blk_num, char *p);
+    void write_block(int blk_num, char *p);
+    bool saveData(std::string data_name);
+    bool loadData(std::string data_name);
 };
 
 

@@ -33,29 +33,29 @@ class Pack {
   private:
     const int MASK;
 
-  public:
+ public:
     Pack() : MASK(0xFF) {} ;
 
-    void intToBytes(byte *block, int offset, int val);  
+    void intToBytes(char *block, int offset, int signed val);  
 };
 
 
 class UnPack {
   private:
     const int MASK;
-    int num;
+    int signed num;
 
   public:
     UnPack() : MASK(0xFF) {};
 
-    int bytesToInt(const byte *mem_loc, int start_loc);
+    int bytesToInt(const char *mem_loc, int start_loc);
 };
 
 
 class File {
   private:
     std::string name;
-    int index;  
+    int signed index;  
 
   public:
     File() : name(""), index(-1) {};
@@ -68,8 +68,8 @@ class File {
 
 class Descriptor {
   private:
-    int length;
-    int disk_map[MAX_NUM_BLKS];
+    int signed length;
+    int signed disk_map[MAX_NUM_BLKS];
 
   public:
     Descriptor() : length(EMPTY_LOC), disk_map{ -1, -1, -1 } {};
@@ -86,17 +86,19 @@ class OFT {
   private:
     File dir_block[NUM_FILE_PER_BLK];
     Disk *disk;
-    byte buffer[BLOCK_LENGTH];
+    char buffer[BLOCK_LENGTH];
     int current_pos;
     int index;
     int length;
     bool isEmpty;
+    Pack pack;
+    UnPack unpack;
 
   public:
-    OFT();
+    OFT() : current_pos(0), index(0), isEmpty(true) {};
     
-    //void initDiskAccess(Disk *d) { disk = d; };
-    byte* getBuf() { return buffer; };
+    void diskAccess(Disk *d) { disk = d; };
+    char* getBuf() { return buffer; };
     int findEmptyDirLoc();
     void setFileInDirBlk(int file_loc, int desc_index, std::string name);
     
@@ -129,9 +131,9 @@ class Memory {
   private:
     Disk *disk;
     Descriptor desc[MAX_NUM_DESC];
-    byte memory_blks[NUM_BLOCKS][BLOCK_LENGTH];
-    byte slot;
-    byte offset;
+    char memory_blks[NUM_BLOCKS][BLOCK_LENGTH];
+    char slot;
+    char offset;
     int bitMask[BIT_MASK_SIZE];
     Pack pack;
     UnPack unpack;
@@ -143,9 +145,9 @@ class Memory {
     void checkBit(int *num, int x);   
 
   public:
-    Memory();
+    Memory(Disk *ldisk) : disk(ldisk) {};
     
-    void initMemory(Disk *ldisk);  
+    void initMemory();  
     void clearBlock(int block_num);
     void setBitMapLocation(byte bit_loc);
     void generateBitMask();
@@ -154,7 +156,7 @@ class Memory {
     void setDescriptorBlock(int desc_blk_num, int desc, int block_num_req, int file_index);
     void createNewFileDescriptor(int file_loc, int blk_num);
 
-    inline byte* getBlk(int blk_num) { return memory_blks[blk_num]; };
+    inline char* getBlk(int blk_num) { return memory_blks[blk_num]; };
     int getDescriptorIndexLocation(int desc_index, int file_index);
     int getFileIndex(int blk_num, int desc_index, int file_index);
     int getDirectoryLength();
@@ -171,6 +173,10 @@ class Memory {
     inline void setDiskMap(int i, int disk_i, int blk) { desc[i].setDiskMap(disk_i, blk); };
     inline void setDescLength(int i, int l) { desc[i].setLength(l); };
     void saveDescriptors();
+    void loadDescriptors();
+    void loadDescriptorsFromBlk(int blk_num);
+    void flushDescriptors();
+    void incFileCount() { desc[DIR_INDEX].incLength(1); };
 };
 
 

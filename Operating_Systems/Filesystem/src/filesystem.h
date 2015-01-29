@@ -29,7 +29,7 @@ class FileSystem {
     Disk disk;
     Memory mem;
     OFT oft[OFT_SIZE];
-    UnPack *unpack;
+    //UnPack *unpack;
     std::string response;
     bool isInitialized;
 
@@ -37,7 +37,8 @@ class FileSystem {
     
   public:
     // Constructors        
-    FileSystem() : response(""), isInitialized(false) {}; 
+    FileSystem() : mem(&disk), response(""), isInitialized(false) {}; 
+    
 
     // Class Methods
     void setResponse(std::string r) { response = r; };

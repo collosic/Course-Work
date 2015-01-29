@@ -14,7 +14,12 @@ Driver::Driver() {
     }
 }
 
+Driver::~Driver() {
+}
+
+
 std::string Driver::interface(vecstr *in) {
+    //fs.setResponse("");
     std::string command = in->front();
     
     // check and see if the FS has been initialized if the command is not "in"

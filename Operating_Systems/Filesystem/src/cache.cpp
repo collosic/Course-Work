@@ -1,27 +1,11 @@
 #include "cache.h"
 #include <iostream>
 
-OFT::OFT() {
-    current_pos = 0;
-    index = 0;
-    isEmpty = true;
-}
-
-
-Memory::Memory() {
-    // 
-    int dir = INT_SIZE;
-    for (int i = 0; i < MAX_NUM_BLKS; i++) {
-    //    dir_slots[i] = dir;
-        dir += INT_SIZE;
-    }
-}
-
 int OFT::findEmptyDirLoc() {
     // look for an empty file location in the directory
     for (int i = 0; i < NUM_FILE_PER_BLK; ++i) {
         // update the current pos
-        this->current_pos += SLOT_SIZE;
+        //this->current_pos += SLOT_SIZE;
         if (dir_block[i].getIndex() == EMPTY_LOC) {
             return i;
         }
@@ -69,7 +53,6 @@ int OFT::read(int blk_num, int i, int c_pos, int l) {
 }
 
 void OFT::writeDirToBuffer() {
-    Pack *pack = new Pack();
     for (int i = 0; i < NUM_FILE_PER_BLK; i++) {
         // for each file write the name and the index to the buffer
         const char *chars = dir_block[i].getName().c_str();
@@ -78,23 +61,24 @@ void OFT::writeDirToBuffer() {
             write_byte(chars[j - offset], j);   
         }
         int file_index = dir_block[i].getIndex();
-        pack->intToBytes(buffer, offset + INT_SIZE, file_index);  
+        pack.intToBytes(buffer, offset + INT_SIZE, file_index);  
     }
-    delete pack;
 }
 
 
 void OFT::readDirFromBuffer() {
-    UnPack *unpack = new UnPack();
-    for (int i = 0; i < NUM_FILE_PER_BLK; i += SLOT_SIZE) {
+    for (int i = 0; i < NUM_FILE_PER_BLK * SLOT_SIZE; i += SLOT_SIZE) {
         std::string name;
-        int offset = i * NUM_FILE_PER_BLK;
-        for (int j = offset; j < INT_SIZE; j++) {
-            name += read_byte(j);
+        int offset = i;
+        int signed desc_index = unpack.bytesToInt(buffer, offset + INT_SIZE); 
+        if (desc_index > -1) {
+            for (int j = offset; j < offset + INT_SIZE; j++) {
+                name += read_byte(j);
+            }
+            dir_block[i / SLOT_SIZE].setName(name);
+            dir_block[i / SLOT_SIZE].setIndex(desc_index); 
         }
-        unpack->bytesToInt(buffer, offset + INT_SIZE); 
     } 
-    delete unpack;
 }
 
 void OFT::resetFiles() {
@@ -105,9 +89,9 @@ void OFT::resetFiles() {
 }
 void OFT::resetParam() {
     // reset all the oft parameters
-    current_pos = -1;
-    index = -1;
-    length = -1;
+    current_pos = 0;
+    index = 0; 
+    length = 0;
     isEmpty = true;
 }
 
@@ -115,8 +99,7 @@ void OFT::resetParam() {
 
 
 
-void Memory::initMemory(Disk *ldisk) {
-    Pack *pack = new Pack();
+void Memory::initMemory() {
     int bitMap = 0;
     
     // Set the block 0 bitmap to have a single directory the bitmap should have 0 - 7 blocks 
@@ -128,7 +111,7 @@ void Memory::initMemory(Disk *ldisk) {
         setBit(&bitMap, bitMask[i]);       
     }
     // write the new bitMap to block 0
-    pack->intToBytes(memory_blks[0], 0, bitMap);
+    pack.intToBytes(memory_blks[0], 0, bitMap);
     //std::cout << static_cast<unsigned int>(memory_blks[BITMAP_BLK][0]) << std::endl;  
     desc[0].setLength(0);
     
@@ -136,8 +119,7 @@ void Memory::initMemory(Disk *ldisk) {
     // our first directory block.
     desc[0].setDiskMap(0, 7);
     //createDirectory();
-    disk = ldisk;
-    delete pack;
+    //disk = ldisk;
 }
 
 
@@ -168,10 +150,8 @@ void Memory::createDirectory() {
 }
 
 
-void Memory::setDescriptorEntry(int block, int offset, int integer) {
-    Pack *pack = new Pack();         
-    pack->intToBytes(memory_blks[block], offset, integer);
-    delete pack;
+void Memory::setDescriptorEntry(int block, int offset, int integer) {      
+    pack.intToBytes(memory_blks[block], offset, integer);
 }
 
 
@@ -186,10 +166,8 @@ void Memory::setDescriptorBlock(int desc_blk_num, int desc, int block_num_req, i
 
 // TODO: 
 int Memory::getFileIndex(int blk_num, int desc_index, int file_index) {
-    UnPack *unpack = new UnPack();
     int index_loc = getDescriptorIndexLocation(desc_index, file_index); 
-    int index = unpack->bytesToInt(memory_blks[blk_num], index_loc);
-    delete unpack;
+    int index = unpack.bytesToInt(memory_blks[blk_num], index_loc);
     return index;
 }
 
@@ -218,14 +196,13 @@ int Memory::findAvailableDescriptorSlot() {
 
 
 int Memory::findAvailableBlock() {
-    UnPack *unpack = new UnPack();
     int bits;
     int location = -1;
     // we place a 8 here because our bitmap is 64 bits in length, but out
     // bitMask is only 32 bits.  Therefore, we must search twice if needed
     for (int i = 0; i < 8; i += 4) {
         // grab an int from the bitmap and search for an empty block
-        bits = unpack->bytesToInt(memory_blks[BITMAP_BLK], i);
+        bits = unpack.bytesToInt(memory_blks[BITMAP_BLK], i);
         location = searchBitMap(bits);        
         if (location != -1 && i == 0) {
             break;
@@ -237,7 +214,6 @@ int Memory::findAvailableBlock() {
     // remove the block from the bitmap
     setBit(&bits, bitMask[location - 1]);
     writeToBitMap(location, bits);
-    delete unpack;
     return location;
 }
 
@@ -318,27 +294,23 @@ int Memory::deleteFile(int ptr_to_file, OFT *oft) {
 
 
 int Memory::generateBitMap(int block_loc) {
-    UnPack *unpack = new UnPack();
     int start_pos = 0;
     int bitmap;
     if (block_loc >= BIT_MASK_SIZE) {
         start_pos = INT_SIZE;
     }
-    bitmap = unpack->bytesToInt(memory_blks[BITMAP_BLK], start_pos);
-    delete unpack;
+    bitmap = unpack.bytesToInt(memory_blks[BITMAP_BLK], start_pos);
     return bitmap;
 
 }
 
 
 void Memory::writeToBitMap(int blk_loc, int bitmap) {
-    Pack *pack = new Pack();
     int start_pos = 0;
     if (blk_loc >= BIT_MASK_SIZE) {
         start_pos = INT_SIZE;
     }
-    pack->intToBytes(memory_blks[0], 0 + start_pos, bitmap); 
-    delete pack;
+    pack.intToBytes(memory_blks[0], 0 + start_pos, bitmap); 
 }
 
 
@@ -348,11 +320,12 @@ void Memory::saveDescriptors() {
             int offset = j * DESCRIPTOR_SIZE;
             int desc_offset = 4 * (i - 1);
             // place the length of the file into 4 bytes
-            pack.intToBytes(memory_blks[i], offset, desc[j + desc_offset].getLength());    
+            int signed length = desc[j + desc_offset].getLength();
+            pack.intToBytes(memory_blks[i], offset, length);
             // save the disk map to the memory block
             for (int l = 0; l < MAX_NUM_BLKS; l++) {
                 offset += INT_SIZE;
-                int blk_num = desc[j + desc_offset].getDiskMapLoc(l); 
+                int signed blk_num = desc[j + desc_offset].getDiskMapLoc(l); 
                 pack.intToBytes(memory_blks[i], offset, blk_num); 
             }
         }
@@ -365,7 +338,54 @@ void Memory::saveDescriptors() {
     }
 }
 
-void Pack::intToBytes(byte *block, int offset, int val) {
+
+void Memory::flushDescriptors() {
+   for (int i = 0; i < CACHE_BLK_SIZE; i++) {
+       for (int j = 0; j < BLOCK_LENGTH; j++) {
+           memory_blks[i][j] = 0;
+       }
+   } 
+   
+   for (int i = 0; i < MAX_NUM_DESC; i++) {
+        desc[i].setLength(-1);
+        for (int j = 0; j < MAX_NUM_BLKS; j++) {
+            desc[i].setDiskMap(j, -1);
+        }   
+   }
+
+
+}
+
+void Memory::loadDescriptors() {
+    // insert the bitmap first
+    disk->read_block(0, memory_blks[0]);
+    for (int i = 1; i < CACHE_BLK_SIZE; i++) {
+        disk->read_block(i, memory_blks[i]);
+        // insert the lengths and diskmaps of each descriptor
+        loadDescriptorsFromBlk(i);
+    }
+
+}
+
+void Memory::loadDescriptorsFromBlk(int blk_num) {
+    int num_desc_per_blk = 4;
+    int offset = 0;
+    int diff = (blk_num - 1) * num_desc_per_blk;
+    // traverse the given block number populating the descriptor object
+    for (int i = 0; i < num_desc_per_blk; ++i) {
+        int signed length = unpack.bytesToInt(memory_blks[blk_num], offset);
+        //if (length == 0) length = -1;
+        desc[i + diff].setLength(length);
+        offset += INT_SIZE;
+        for (int j = 0; j < MAX_NUM_BLKS; j++) {
+            int signed disk_map_blk = unpack.bytesToInt(memory_blks[blk_num], offset);
+            desc[i + diff].setDiskMap(j, disk_map_blk);
+            offset += INT_SIZE;
+        }
+    }
+}
+
+void Pack::intToBytes(char *block, int offset, int signed val) {
     for (int i = 3; i >= 0; i--) {
         block[offset + i] = (byte)(val & MASK);
         val = val >> 8;        
@@ -373,13 +393,16 @@ void Pack::intToBytes(byte *block, int offset, int val) {
 } 
 
 
-int UnPack::bytesToInt(const byte *mem_loc, int start_loc) {
-    num = (int)mem_loc[start_loc] & MASK;
+int UnPack::bytesToInt(const char *mem_loc, int start_loc) {
+    num = (signed int)mem_loc[start_loc] & MASK;
+    int num_ret;
     for (int i = 0; i < INT_SIZE; ++i) {
         num = num << 8;
-        num = num | ((int)mem_loc[start_loc + i] & MASK);        
+        num = num | ((signed int)mem_loc[start_loc + i] & MASK);        
     }
-    return num;
+    num_ret = num;
+    num = 0;
+    return num_ret;
 }
 
 
