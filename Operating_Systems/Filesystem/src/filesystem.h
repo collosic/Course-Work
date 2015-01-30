@@ -5,7 +5,6 @@
 #include <string>
 #include <vector>
 #include <iterator>
-#include <unordered_map>
 #include <limits>
 #include <regex>
 
@@ -55,7 +54,8 @@ class FileSystem {
     void seek(vecstr *in);
     void save(vecstr *in);
     void listDirectory();
-    int findName();
+    bool doesNameExist(std::string name);
+    bool isDuplicate(vecstr *in);
     int findAvailableDescriptorSlot();
     inline bool checkInitialization() { return isInitialized; };
     void closeFile(vecstr *in);

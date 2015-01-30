@@ -13,13 +13,20 @@ int OFT::findEmptyDirLoc() {
     return -1;
 }
 
+void OFT::makeNull() {
+    for (int i = 0; i < BLOCK_LENGTH; i++) {
+        buffer[i] = '\0';
+    }
+}
+
 
 void OFT::setFileInDirBlk(int file_loc, int desc_index, std::string name) {
     // prep the file for a write
-    dir_block[file_loc].setName((char*) name.c_str());
+    dir_block[file_loc].size = name.size();
+    dir_block[file_loc].setName(name);
     dir_block[file_loc].setIndex(desc_index); 
     // need to update the current pos by 8 bytes. 4 for the name and 4 for the index
-    current_pos += SLOT_SIZE;
+    //current_pos += SLOT_SIZE;
 }
 
 // 
@@ -33,8 +40,10 @@ void OFT::seek(int new_pos, int old_pos, Descriptor *desc) {
         int new_blk_num = desc->getDiskMapLoc(new_disk_map_index);
         int old_blk_num = desc->getDiskMapLoc(old_disk_map_index);
         // write the current block back to disk and then read in the new one
-        disk->write_block(old_blk_num, buffer);
-        read(new_blk_num, this->index, new_pos, this->length);
+        if (new_blk_num > 0 && old_blk_num > 0) {
+            disk->write_block(old_blk_num, buffer);
+            read(new_blk_num, this->index, new_pos, this->length);
+        }
     }
     current_pos = new_pos;
 }
@@ -56,8 +65,9 @@ void OFT::writeDirToBuffer() {
     for (int i = 0; i < NUM_FILE_PER_BLK; i++) {
         // for each file write the name and the index to the buffer
         const char *chars = dir_block[i].getName().c_str();
+        int size = strlen(chars);
         int offset = i * NUM_FILE_PER_BLK;
-        for (int j = offset; j < INT_SIZE + offset; j++) {
+        for (int j = offset; j < offset + size; j++) {
             write_byte(chars[j - offset], j);   
         }
         int file_index = dir_block[i].getIndex();
@@ -73,7 +83,11 @@ void OFT::readDirFromBuffer() {
         int signed desc_index = unpack.bytesToInt(buffer, offset + INT_SIZE); 
         if (desc_index > -1) {
             for (int j = offset; j < offset + INT_SIZE; j++) {
-                name += read_byte(j);
+                char temp = read_byte(j);
+                if (temp == '\0') break;
+                if (isalnum(temp)) {
+                    name += temp;
+                }
             }
             dir_block[i / SLOT_SIZE].setName(name);
             dir_block[i / SLOT_SIZE].setIndex(desc_index); 
@@ -93,6 +107,7 @@ void OFT::resetParam() {
     index = 0; 
     length = 0;
     isEmpty = true;
+    file_name = "";
 }
 
 
@@ -240,24 +255,42 @@ void Memory::createNewFileDescriptor(int desc_index, int blk_num) {
 
 
 int Memory::findFileName(std::string file_name, OFT *oft) {
-    // this loop will find the name of the file and returns a ptr index to that file
-    for (int i = 0; i < NUM_FILE_PER_BLK; i++) {
-        int offset = i * NUM_FILE_PER_BLK;
-        if (offset % BLOCK_LENGTH == 0) {
-            int next_blk = desc[DIR_INDEX].getDiskMapLoc(offset / BLOCK_LENGTH);
+    int curr = oft->getCurrentPos();
+    if (curr != 0) curr -= 1;
+    int curr_blk = desc[DIR_INDEX].getDiskMapLoc(curr / BLOCK_LENGTH);
+    if (curr_blk != -1)  {
+        oft->writeDirToBuffer();
+        disk->write_block(curr_blk, oft->getBuf());
+        oft->seek(0, curr, &desc[DIR_INDEX]);
+        oft->readDirFromBuffer();
+        curr_blk = desc[DIR_INDEX].getDiskMapLoc(0);
+    }
+    
+
+
+    for (int k = 64; k <= 192; k += 64) {
+
+        // this loop will find the name of the file and returns a ptr index to that file
+        for (int i = 0; i < NUM_FILE_PER_BLK; i++) {
+            oft->setCurrentPos((i * SLOT_SIZE) + (k - 64)) ;
+            if (file_name.compare(oft->getFileName(i)) == 0) {
+                return i;
+            }          
+        } 
+        if (k < 192) {
+
+            int next_blk = desc[DIR_INDEX].getDiskMapLoc(k / BLOCK_LENGTH);
             // if next blk is -1 then we've reached the end of our search
-            if (next_blk == -1) return next_blk;
-            int curr_blk = desc[DIR_INDEX].getDiskMapLoc((offset / BLOCK_LENGTH) - 1);
+            if (next_blk == -1) return -1;
             oft->writeDirToBuffer();
             disk->write_block(curr_blk, oft->getBuf());
-            oft->seek(offset, offset - 1, &desc[DIR_INDEX]);
+            oft->seek(k, k - 1, &desc[DIR_INDEX]);
+            oft->resetFiles();
             oft->readDirFromBuffer();
+            curr_blk = next_blk;
         }
-        oft->setCurrentPos(i);
-        if (file_name.compare(oft->getFileName(i)) == 0) {
-            return i;
-        }          
-    } 
+    }
+
     return -1;   
 }
 
@@ -289,6 +322,7 @@ int Memory::deleteFile(int ptr_to_file, OFT *oft) {
     // clear the file name and index pointing to the descriptor
     oft->clearFileName(ptr_to_file);
     oft->clearDescIndex(ptr_to_file);
+    oft->makeNull();
     return 0;
 }
 

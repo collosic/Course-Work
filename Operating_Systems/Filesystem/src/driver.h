@@ -15,9 +15,9 @@
 
 class Driver {
   private:
-    FileSystem fs;
+    FileSystem *fs;
     std::string commands[NUM_COMMANDS];
-    std::unordered_map<std::string, int> map;
+    //std::unordered_map<std::string, int> map;
 
   public:
     // Constructors

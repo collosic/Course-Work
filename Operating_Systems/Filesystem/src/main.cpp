@@ -24,20 +24,25 @@ void runDriver(bool hasArgument, std::string commands) {
     vecstr in;
 
     if (hasArgument) { 
+        std::ofstream out("11233529.txt");
         std::ifstream incoming(commands);
         //incoming.exceptions(std::ifstream::failbit|std::ifstream::badbit);
-        if (!incoming) 
+        if (!incoming && !out) 
             std::cout << "error opening argument file, resuming default behaviour" << std::endl;
         else {
             //incoming.clear();
             while (std::getline(incoming, rawInput)) {
-                std::cout << rawInput << std::endl;
                 std::stringstream ss(rawInput);
+                if (rawInput.size() == 0) 
+                    continue;
                 while (ss >> buf) 
                     in.push_back(buf);
-                std::cout << driver->interface(&in) << std::endl;
+               std::string o = driver->interface(&in);
+               out << o.c_str() << std::endl;
+               std::cout << o << std::endl;
             }
             incoming.close();
+            out.close();
         }
     }
 

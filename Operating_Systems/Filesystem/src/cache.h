@@ -5,6 +5,8 @@
 #include <cstring>
 #include <vector>
 #include <iterator>
+#include <cctype>
+#include <algorithm>
 
 #include "disk.h"
 
@@ -63,6 +65,8 @@ class File {
     inline void setIndex(int i) { index = i; };
     inline std::string getName() { return name; };
     inline int getIndex() { return index; };
+
+    int size;
 };
 
 
@@ -91,6 +95,7 @@ class OFT {
     int index;
     int length;
     bool isEmpty;
+    std::string file_name;
     Pack pack;
     UnPack unpack;
 
@@ -101,6 +106,7 @@ class OFT {
     char* getBuf() { return buffer; };
     int findEmptyDirLoc();
     void setFileInDirBlk(int file_loc, int desc_index, std::string name);
+    void makeNull();
     
     void seek(int new_pos, int old_pos, Descriptor *desc);
     int read(int blk_num, int i, int c_pos, int l);
@@ -110,7 +116,8 @@ class OFT {
     void readDirFromBuffer();
     void writeDirToBuffer();
     void resetFiles();
-    
+    void addFileName(std::string n) { file_name = n; };
+    std::string getOpenedName() { return file_name; };
 
     inline void setCurrentPos(int pos) { current_pos = pos; };
     inline void setIndex(int i) { index = i; };
