@@ -70,7 +70,6 @@ void FileSystem::loadDisk(std::string file_name) {
 void FileSystem::createFile(vecstr *in) {
     std::string file_name = in->front();
     in->erase(in->begin());
-    int curr = oft[OFT_DIR_BLK].getCurrentPos();
     int used_name = mem.findFileName(file_name, &oft[OFT_DIR_BLK]);
     
     // TODO: make sure you check if files can digits for names
@@ -266,6 +265,7 @@ void FileSystem::read(vecstr *in) {
                 // read the bytes in sequential order
                 for (int i = curr_pos; i < curr_pos + end_pos; ++i) {
                    if (i >= FILE_LIMIT || i >= length) {
+                        oft[oft_index].setCurrentPos(i);
                         break;
                     }
                     // if the bytes being read goes beyond the block, seek to that new block

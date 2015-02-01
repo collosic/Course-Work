@@ -20,7 +20,7 @@ Driver::~Driver() {
 
 
 std::string Driver::interface(vecstr *in) {
-    //fs->setResponse("");
+    fs->setResponse("");
     std::string command = in->front();
     int value = 0;    
     // check and see if the FS has been initialized if the command is not "in"
@@ -40,8 +40,6 @@ std::string Driver::interface(vecstr *in) {
     }
     } 
 
-    //std::unordered_map<std::string, int>::const_iterator value = map.find(command);
-    std::string response;
     
     // we need to evaluate the command and then determine if the user has typed
     // in too many arguments for each command
@@ -66,7 +64,7 @@ std::string Driver::interface(vecstr *in) {
                     break;
         case 10:    in->size() != 1 ? fs->wrongArg(command) : fs->save(in);
                     break;
-        default:    response = "Invalid command entered";
+        default:    fs->setResponse("Invalid command entered");
                     break;
     }
     in->clear();
