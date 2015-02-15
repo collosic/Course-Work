@@ -18,12 +18,12 @@ public class Parser {
     private void initSymbolTable()
     {
     	symbolTable = new SymbolTable();
-    	symbolTable.enterSymbol("readInt", "readInt");
-    	symbolTable.enterSymbol("readFloat", "readFloat");
-    	symbolTable.enterSymbol("printBool", "printBool");
-    	symbolTable.enterSymbol("printInt", "printInt");
-    	symbolTable.enterSymbol("printFloat", "printFloat");
-    	symbolTable.enterSymbol("println", "println");
+    	symbolTable.insert("readInt");
+    	symbolTable.insert("readFloat");
+    	symbolTable.insert("printBool");
+    	symbolTable.insert("printInt");
+    	symbolTable.insert("printFloat");
+    	symbolTable.insert("println");
     }
     
     private void enterScope()
@@ -217,31 +217,6 @@ public class Parser {
         String errorMessage = reportSyntaxError(nt);
         throw new QuitParseException(errorMessage);
         //return ErrorToken(errorMessage);
-    }
- // Grammar Rule Reporting ==========================================
-    private int ASTRecursionDepth = 0;
-    private StringBuffer parseTreeBuffer = new StringBuffer();
-
-    public void enterRule(NonTerminal nonTerminal) {
-        String lineData = new String();
-        for(int i = 0; i < ASTRecursionDepth; i++)
-        {
-            lineData += "  ";
-        }
-        lineData += nonTerminal.name();
-        //System.out.println("descending " + lineData);
-        parseTreeBuffer.append(lineData + "\n");
-        ASTRecursionDepth++;
-    }
-    
-    private void exitRule(NonTerminal nonTerminal)
-    {
-    	ASTRecursionDepth--;
-    }
-    
-    public String parseTreeReport()
-    {
-        return parseTreeBuffer.toString();
     }
 
 // Grammar Rules =====================================================
@@ -614,7 +589,7 @@ public class Parser {
     // | while-statement 
     // | return-statement .
     public ast.Statement statement() {
-    	ast.Statement state = null;
+    	ast.Statement state;
         if (have(Token.Kind.VAR)) {
             state = variable_declaration();
         } else if (have(Token.Kind.CALL)) {
