@@ -4,5 +4,5 @@ tests_public/*
 .recommenders/*
 Lab2_Parser/*
 theme-21.epf
-scores_project4.csv
+*.csv
 .gitignore
