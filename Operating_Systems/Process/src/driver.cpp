@@ -5,11 +5,14 @@
 Driver::Driver() {
     // Initialize the accepted commands
     quit = false;
-    std::string tmp[] = {"init", "quit", "cr", "de", "req", "rel", "to", "lp", "lr", "pp", "pr"};
+    std::string tmp[] = {"init", "cr", "de", "req", "rel", "to", "quit", "lp", "lr", "pp", "pr"};
     for (int i = 0; i < NUM_COMMANDS; i++) {
         map[tmp[i]] = i + 1;            
         //commands[i] = tmp[i];
     }
+
+    // Create a manager
+    manager = new Manager();
 }
 
 Driver::~Driver() {
@@ -29,32 +32,37 @@ std::string Driver::interface(vecstr *in) {
         
     // we need to evaluate the command and then determine if the user has typed
     // in too many arguments for each command
+    std::string response;
     switch (value->second) {
-        case 1:     return "init works"; 
+        case 1:     response = in->size() > 0 ? "init takes no arguments" : manager->initialize();
                     break;
-        case 2:     quit = true;
-                    return "quiting program"; 
+        case 2:     response = in->size() == 2 ? manager->create(in) : "invalid use of cr";
                     break;
-        case 3:     
+        case 3:     response = in->size() == 1 ? manager->destroy(in) : "invalid use of de";
                     break;
-        case 4:     
+        case 4:     response = in->size() > 0 && in->size() < 3 ? manager->request(in) :
+                                                                    "invalid use of req";
                     break;
-        case 5:     
+        case 5:     response = in->size() > 0 && in->size() < 3 ? manager->request(in) :
+                                                                    "invalid use of rel";
                     break;
-        case 6:     
+        case 6:     response = in->size() == 0 ? manager->timeout() : "invalid use of to"; 
                     break;
-        case 7:     
+        case 7:     response = manager->quit(); 
+                    quit = true;
                     break;
-        case 8:     
+        case 8:      
                     break;
         case 9:     
                     break;
         case 10:    
                     break;
-        default:    return "no such command";
+        case 11:    
+                    break;
+        default:    return "invalid command entered";
                     break;
     }
     in->clear();
-    return "all is well";
+    return response;
 }    
 

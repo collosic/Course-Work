@@ -8,6 +8,7 @@
 #include <map>
 
 // Header Files
+#include "manager.h"
 
 // Constants
 #define NUM_COMMANDS 11
@@ -21,6 +22,9 @@ class Driver {
     //std::string commands[NUM_COMMANDS];
     std::map<std::string, int> map;
     bool quit;
+
+    // Data Structures required for the manager
+    Manager *manager;
 
   public:
     // Constructors
