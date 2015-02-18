@@ -17,6 +17,13 @@ class Manager {
     pcb_q *blocked_list;
     PCB *init_proc;
     PCB *running;
+    PCB *self;
+
+    // Resources: each Ri holds i resources 
+    RCB *R1;
+    RCB *R2;
+    RCB *R3;
+    RCB *R4;
 
     // hashmaps to store names of processes and resources
     std::map<std::string, PCB*> processes;
@@ -50,6 +57,11 @@ class Manager {
    // Helper functions to make things easier to read and follow
    void preempt(PCB *p);
    void killTree(PCB *p);
+   void killSelf(PCB *p);
+   void removeFromList(PCB *p);
+   void remove(pcb_q *list, PCB *p);
+   std::string listProcs();
+   std::string procInfo(vecstr *in);
 
 };
 

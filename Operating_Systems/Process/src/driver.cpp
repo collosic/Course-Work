@@ -48,14 +48,15 @@ std::string Driver::interface(vecstr *in) {
                     break;
         case 6:     response = in->size() == 0 ? manager->timeout() : "invalid use of to"; 
                     break;
-        case 7:     response = manager->quit(); 
+        case 7:     delete manager;
                     quit = true;
+                    response ="Good bye";
                     break;
-        case 8:      
+        case 8:     response = manager->listProcs();
                     break;
         case 9:     
                     break;
-        case 10:    
+        case 10:    response = manager->procInfo(in); 
                     break;
         case 11:    
                     break;

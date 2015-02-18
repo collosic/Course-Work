@@ -30,7 +30,7 @@ void runDriver(bool hasArgument, std::string commands) {
             std::cout << "error opening argument file, resuming default behaviour" << std::endl;
         else {
             while (std::getline(incoming, rawInput)) {
-                if (rawInput.size() == 0) 
+                if (rawInput == "\n" || rawInput == "\r\n" || rawInput == "") 
                     continue;
                 std::stringstream ss(rawInput);
                 while (ss >> buf) 
