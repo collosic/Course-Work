@@ -19,6 +19,9 @@ RCB::RCB(RESOURCES name, int count) {
 }
 
 RCB::~RCB() {
+    for (unsigned long i = 0; i < wait_list.size(); i++) {
+        delete wait_list.at(i); 
+    }
 }
 
 OtherResources::OtherResources(RCB *r, int units) {
@@ -30,7 +33,17 @@ OtherResources* PCB::checkResources(RCB *r) {
    for (unsigned long i = 0; i < other_resources.size(); i++) {
         OtherResources *o_r = other_resources[i];
         if (o_r->getResource() == r) 
-            return other_resources[i];         
+            return o_r;
    } 
    return nullptr;
+}
+
+void PCB::removeResources(RCB *r) {
+    for (unsigned long i = 0; i < other_resources.size(); i++) {
+        OtherResources *o_r = other_resources[i];
+        if (o_r->getResource() == r) { 
+            delete o_r;
+            other_resources.erase(other_resources.begin() + i); 
+        }
+    }
 }

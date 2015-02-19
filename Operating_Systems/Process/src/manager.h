@@ -7,14 +7,13 @@
 #include "controlblocks.h"
 
 typedef std::vector<std::string> vecstr;
-typedef std::vector<PCB*> pcb_q;
 typedef decltype(nullptr) nullptr_t;
 
 
 class Manager {
   private:
-    vecpcb *ready_list;
-    vecpcb *blocked_list;
+    vecproc *ready_list;
+    vecproc *blocked_list;
     PCB *init_proc;
     PCB *running;
     PCB *self;
@@ -59,9 +58,11 @@ class Manager {
    void killTree(PCB *p);
    void killSelf(PCB *p);
    void removeFromList(PCB *p);
-   void remove(pcb_q *list, PCB *p);
+   //void remove(vecProc *list, PCB *p);
    std::string listProcs();
    std::string procInfo(vecstr *in);
+   void freeResources(PCB *p);
+   std::string releaseRes(PCB *p, RCB *r, int num_rel);
 
 };
 

@@ -26,18 +26,26 @@ void runDriver(bool hasArgument, std::string commands) {
     if (hasArgument) { 
         std::ofstream out("11233529.txt");
         std::ifstream incoming(commands);
+        std::cout << "init ";
+        out << "init ";
         if (!incoming && !out) 
             std::cout << "error opening argument file, resuming default behaviour" << std::endl;
         else {
             while (std::getline(incoming, rawInput)) {
-                if (rawInput == "\n" || rawInput == "\r\n" || rawInput == "") 
+                const char *c = rawInput.c_str();
+                if (c[0] == '#') continue;
+                if (rawInput == "\n" || rawInput == "\r\n" || rawInput == "" || rawInput == "\r") { 
+                    std::cout << std::endl;
+                    out << std::endl;
                     continue;
+                }
                 std::stringstream ss(rawInput);
-                while (ss >> buf) 
+                while (ss >> buf) { 
                     in.push_back(buf);
+                }
                std::string o = driver->interface(&in);
-               out << o.c_str() << std::endl;
-               std::cout << o << std::endl;
+               out << o + " "; 
+               std::cout << o + " ";
             }
             incoming.close();
             out.close();

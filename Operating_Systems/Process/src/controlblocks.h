@@ -5,7 +5,7 @@
 #include <vector>
 
 // Call definitions
-class Waiting;
+class Proc;
 class OtherResources;
 class PCB;
 class RCB;
@@ -19,17 +19,20 @@ const int NUM_PRIORITIES = 3;
 
 // Type definitions
 typedef std::vector<PCB*> vecpcb;
-typedef std::vector<Waiting*> vecwait;
+typedef std::vector<Proc*> vecproc;
 typedef decltype(nullptr) nullptr_t;
 
-class Waiting {
+class Proc {
   private:
     PCB *p;
     int units;
 
   public:
-    Waiting (PCB *s, int u) : p(s), units(u) {};
-    ~Waiting ();
+    Proc (PCB *s, int u) : p(s), units(u) {};
+    ~Proc () {};
+
+    PCB* getPCB() { return p; };
+    int getUnits() { return units; };
 };
 
 class OtherResources {
@@ -45,6 +48,7 @@ class OtherResources {
     void setNumUnits(int value) { num_units = value; };
     int getUnits() { return num_units; };
     RCB* getResource() { return res; };
+    int releaseResources(int r) { return num_units -= r; };
 
 };
 
@@ -53,7 +57,7 @@ class PCB {
     std::string PID;
     std::vector<OtherResources*> other_resources;
     STATE type;
-    vecpcb *type_list;
+    vecproc *type_list;
     PCB *parent;
     vecpcb child;
     int priority;
@@ -65,9 +69,9 @@ class PCB {
     // funciton for changing the PCB's properties
     void setState(STATE state) { type = state; };
     void setType(STATE s) { type = s; };
-    void setTypeList(vecpcb *l) { type_list = l; };
+    void setTypeList(vecproc *l) { type_list = l; };
     STATE getType() { return type; };
-    vecpcb* getTypeList() { return type_list; };
+    vecproc* getTypeList() { return type_list; };
     void insertChild(PCB *kid) { child.push_back(kid); };
     void setParent(PCB *p) { parent = p; };
     int getPriority() { return priority; };
@@ -76,8 +80,11 @@ class PCB {
     vecpcb* getChildren() { return &child; };
     PCB* getParent() { return parent; };
     void removeChildAt(int p) { child.erase(child.begin() + p); };
+    std::vector<OtherResources*>* getResources() { return &other_resources; };
     OtherResources* checkResources(RCB *r);
     void insertResources(OtherResources *o) { other_resources.push_back(o); };
+    void removeResources(RCB *r);
+
 };
 
 class RCB {
@@ -86,7 +93,7 @@ class RCB {
     int k;
     int u;
     // need a queue of PCB's waiting for resources
-    vecwait wait_list;
+    vecproc wait_list;
 
   public:
     RCB (RESOURCES name, int count);
@@ -96,8 +103,9 @@ class RCB {
     RESOURCES getRID() { return RID; };
     int getMaxUnits() { return k; };
     int getAvailableUnits() { return u; };
-    vecwait* getWaitList() { return &wait_list; };
+    vecproc* getWaitList() { return &wait_list; };
     void setAvailableUnits(int r) { u = r; };
-    void insertWaiting(Waiting *w) { wait_list.push_back(w); };
+    void insertWaiting(Proc *w) { wait_list.push_back(w); };
+    void release(int i) { u += i; };
 };
 #endif
