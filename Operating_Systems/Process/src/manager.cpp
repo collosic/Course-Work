@@ -218,40 +218,6 @@ std::string Manager::release(vecstr *args) {
     self = running;
     std::string s = releaseRes(self, r, num_rel);
     if (s != "") return s;
-    /* 
-    OtherResources* other = self->checkResources(r);
-    if (other == nullptr) 
-        return "process " + self->getPID() + " isn't holding these resources";
-    
-    // verify the number of units being released is no more than the number of units
-    // this process is holding.    
-    int units_holding = other->getUnits();
-    if (num_rel > units_holding) 
-        return "attempting to release more units than the process holds";
-
-    int units_left = other->releaseResources(num_rel);
-    if (units_left == 0) 
-        self->removeResources(r);
-
-    // release the units from the resource and check the waiting liiist
-    r->release(num_rel); 
-    vecproc *wait_list = r->getWaitList(); 
-    while (!wait_list->empty()) {
-        // check and see if we can satisfy the processes in the queue
-        Proc *next = wait_list->front();
-        int available = r->getAvailableUnits();
-        int needed = next->getUnits();
-        if (needed > available) 
-            break;
-
-        // remove the process from the waiting list
-        wait_list->erase(wait_list->begin());
-        PCB *q = next->getPCB();
-        q->setType(STATE::READY);
-        q->setTypeList(&ready_list[q->getPriority()]);
-        q->insertResources(new OtherResources(r, needed));
-        ready_list[q->getPriority()].push_back(new Proc(q, needed));
-    } */
     return scheduler();
 }
 
@@ -391,19 +357,6 @@ void Manager::freeResources(PCB *p) {
         RCB *r = o->getResource();
         int units = o->getUnits();
         releaseRes(p, r, units);
-        /*
-        if (res == RESOURCES::R1) {
-            releaseRes(p, r, units);
-        } else if (res == RESOURCES::R2) {
-            release(p, r, units);
-        } else if (res == RESOURCES::R3) {
-            vecstr v = {"R3", units};
-            release(&v);
-        } else {
-            vecstr v = {"R4", units};
-            release(&v);
-        }*/
-
         //delete o;
     }
 }

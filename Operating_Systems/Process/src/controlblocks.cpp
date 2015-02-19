@@ -8,7 +8,8 @@ PCB::PCB(std::string name, STATE state, int p_level) {
 
 PCB::~PCB() {
     // delete all the resources in the PCB
-    for (unsigned long i = 0; i < other_resources.size(); i++) {
+    int size = other_resources.size();
+    for (int i = 0; i < size; i++) {
         delete other_resources[i]; 
     }
 }
@@ -19,7 +20,8 @@ RCB::RCB(RESOURCES name, int count) {
 }
 
 RCB::~RCB() {
-    for (unsigned long i = 0; i < wait_list.size(); i++) {
+    int size = wait_list.size();
+    for (int i = 0; i < size; i++) {
         delete wait_list.at(i); 
     }
 }
@@ -30,7 +32,8 @@ OtherResources::OtherResources(RCB *r, int units) {
 }
 
 OtherResources* PCB::checkResources(RCB *r) {
-   for (unsigned long i = 0; i < other_resources.size(); i++) {
+   int size = other_resources.size();
+   for (int i = 0; i < size; i++) {
         OtherResources *o_r = other_resources[i];
         if (o_r->getResource() == r) 
             return o_r;
@@ -39,11 +42,13 @@ OtherResources* PCB::checkResources(RCB *r) {
 }
 
 void PCB::removeResources(RCB *r) {
-    for (unsigned long i = 0; i < other_resources.size(); i++) {
+    int size = other_resources.size();
+    for (int i = 0; i < size; i++) {
         OtherResources *o_r = other_resources[i];
         if (o_r->getResource() == r) { 
             delete o_r;
             other_resources.erase(other_resources.begin() + i); 
+            break;
         }
     }
 }
