@@ -40,11 +40,9 @@ std::string Driver::interface(vecstr *in) {
                     break;
         case 3:     response = in->size() == 1 ? manager->destroy(in) : "invalid use of de";
                     break;
-        case 4:     response = in->size() > 0 && in->size() < 3 ? manager->request(in) :
-                                                                    "invalid use of req";
+        case 4:     response = in->size() == 2 ? manager->request(in) : "invalid use of req";
                     break;
-        case 5:     response = in->size() > 0 && in->size() < 3 ? manager->request(in) :
-                                                                    "invalid use of rel";
+        case 5:     response = in->size() == 2 ? manager->request(in) : "invalid use of rel";
                     break;
         case 6:     response = in->size() == 0 ? manager->timeout() : "invalid use of to"; 
                     break;

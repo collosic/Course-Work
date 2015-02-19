@@ -1,28 +1,32 @@
+// manager.cpp
+
 #include "manager.h"
-
-
-Manager::Manager() {
-    // This constructor should initialize a brand new init process
-    ready_list = new pcb_q[NUM_PRIORITIES];
-    blocked_list = new pcb_q[NUM_PRIORITIES];
-    isInit = false;
-    init_proc = running = self = nullptr;
-    vecstr params = {"init", "0"};
-    create(&params);
-    isInit = true;
-}
-
-Manager::~Manager() {
-    quit();
-}
-
 
 /* This function will destroy any previous creation tree, if it exists
  * and then create a brand new init process at level 0. */
-
 std::string Manager::initialize() {
-    // first destroy the current tree if it exists
-    
+    // first destroy the current init process and its children
+    // second recreate the ready and blocked lists
+    if (init_proc != nullptr)
+        killAll(); 
+    // create each resource
+    R1 = new RCB(RESOURCES::R1, 1);
+    R2 = new RCB(RESOURCES::R2, 2);
+    R3 = new RCB(RESOURCES::R3, 3);
+    R4 = new RCB(RESOURCES::R4, 4);
+
+    // place all resources in a hash map for easy lookup
+    for (int i = 1; i <= 4; i++) 
+        resources["R" + std::to_string(i)] = i;
+
+    // generate a brand new process and resource environment
+    init_proc = running = self = nullptr;
+    ready_list = new vecpcb[NUM_PRIORITIES];
+    blocked_list = new vecpcb[NUM_PRIORITIES];
+    isInit = false;
+    vecstr params = {"init", "0"};
+    create(&params);
+    isInit = true;       
 
     // Now create a new process called init at level 0
     return "*init process created";
@@ -101,32 +105,99 @@ std::string Manager::destroy(vecstr *arg) {
 }
 
 std::string Manager::request(vecstr *args) {
+    // extract and anaylze the arguments
+    std::string re = args->front();
+    args->erase(args->begin());
+    std::string units = args->front();
+    
+    if (init_proc == nullptr)
+        return "no processes are running";
 
-    return "blah";
+    if (!is_printable(re)) 
+        return "not a valid resource";   
+
+    if (!is_digits(units)) 
+        return "re requires a digit after resource name";
+
+    int num_req = std::stoi(units);
+    if (num_req < 1 || num_req > 4) 
+        return "resource units requested is out of range";
+
+    // determine what kind of resource is requested 
+    RCB *r;
+    std::map<std::string, int>::iterator res = resources.find(re); 
+    switch (res->second) {
+        case 1:     r = R1;
+                    break;
+        case 2:     r = R2;
+                    break;
+        case 3:     r = R3;
+                    break;
+        case 4:     r = R4; 
+                    break;
+        default:    return "invalid resource name";
+    }   
+    int available = r->getAvailableUnits();
+    int max = r->getMaxUnits();
+    
+    // check to see if units requested is larger than max available
+    if (num_req > max)
+        return "requested more units than resource can give out";
+    
+    // need to check if the running process already has the reqeusted resource
+    OtherResources* other = running->checkResources(r);
+    int num_holding;
+    if (other != nullptr) {
+        num_holding = other->getUnits();
+        if (num_req + num_holding < available) {
+            other->setNumUnits(num_req + num_holding);
+            return running_resp(running->getPID());
+        }
+    }
+
+    if (num_req < available) {
+        r->setAvailableUnits(available - num_req);
+        running->insertResources(new OtherResources(r, num_req));
+    } else {
+        self = running;
+        running = nullptr;
+        removeFromList(self);
+        self->setType(STATE::BLOCKED);        
+        self->setTypeList(&blocked_list[self->getPriority()]);
+        r->insertWaiting(new Waiting(self, num_req));
+        scheduler();
+    }
+
+    return running_resp(running->getPID());
 }
 
 std::string Manager::release(vecstr *args) {
-
 
     return "blah";
     
 }
 
 std::string Manager::timeout() {
-    int priority = running->getPriority();
-    if (!ready_list[priority].empty() && priority != 0) {
-        ready_list[priority].erase(ready_list[priority].begin());
-        preempt(ready_list[priority].front());
-        return running_resp(running->getPID());
-    } else {
-       return "Only the init process exists, cannot time-out";
-    } 
-        
+    if (running != nullptr) {
+        int priority = running->getPriority();
+        vecpcb *list = &ready_list[priority];
+        if (list->size() > 1 && priority != 0) {
+            preempt(list->at(1));
+            return running_resp(running->getPID());
+        } else {
+            return "only one process running at the priority";
+        } 
+    }
+    return "no process is running";
 }
-std::string Manager::quit() {
+std::string Manager::killAll() {
     killSelf(init_proc);
     delete[] ready_list;
     delete[] blocked_list;
+    delete R1;
+    delete R2;
+    delete R3;
+    delete R4;
     return "Good Bye";
 }
 
@@ -135,10 +206,11 @@ std::string Manager::quit() {
 std::string Manager::scheduler() {
     // check the highest level priority until a process is found
     PCB *p;
-    for (int i = NUM_PRIORITIES - 1; i > 0; i--) {
+    for (int i = NUM_PRIORITIES - 1; i >= 0; i--) {
         if(!ready_list[i].empty()) {
             p = ready_list[i].front();
-            if (self == nullptr || self->getPriority() < p->getPriority() || self != p) {
+            if (self == nullptr || self->getPriority() < p->getPriority() || 
+                    self->getType() != STATE::RUNNING) {
                 preempt(p);
             }
             break;
@@ -167,10 +239,11 @@ void Manager::killTree(PCB *p) {
         killTree(child); 
         // free all resources
         
+        // remove from type list and lookup and delete
         removeFromList(child); 
         processes.erase(child->getPID());
+        if (child == running) running = nullptr;
         delete child;
-
     }
     // remove the child from the parent
     kids->clear(); 
@@ -190,17 +263,17 @@ void Manager::killSelf(PCB *p) {
         auto pos = std::distance(plist->begin(), it);
         parent->removeChildAt(pos);
     }
-    // remove from type list and delete
-    removeFromList(p);
-    if (p == running) {
-        running = nullptr;
-    }
-    if (p == init_proc) {
-        init_proc = nullptr;
-    }
+    // remove from Type List and delete
     processes.erase(p->getPID());
-    delete p;
+    removeFromList(p);
+    
+    // properly determine which pointers require null
+    if (p == running) 
+        running = nullptr;
+    if (p == init_proc) 
+        init_proc = nullptr;
     self = nullptr;
+    delete p;
 }
 
 
@@ -215,7 +288,6 @@ void Manager::removeFromList(PCB *p) {
 
 
 bool Manager::is_digits(const std::string &str) {
-
     return std::all_of(str.begin(), str.end(), ::isdigit);
 }
 

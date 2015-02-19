@@ -13,8 +13,8 @@ typedef decltype(nullptr) nullptr_t;
 
 class Manager {
   private:
-    pcb_q *ready_list;
-    pcb_q *blocked_list;
+    vecpcb *ready_list;
+    vecpcb *blocked_list;
     PCB *init_proc;
     PCB *running;
     PCB *self;
@@ -27,15 +27,15 @@ class Manager {
 
     // hashmaps to store names of processes and resources
     std::map<std::string, PCB*> processes;
-    std::map<std::string, RCB*> resources;
+    std::map<std::string, int> resources;
     
     // this variable is used to test if the init process is has already 
     // been created.  Priority level 0 can only be used once.
     bool isInit;
 
   public:
-    Manager();
-    ~Manager();
+    Manager() : init_proc(nullptr), running(nullptr), self(nullptr) { initialize(); };
+    ~Manager() { killAll(); };
     
    std::string initialize();
    std::string create(vecstr *args);
@@ -43,7 +43,7 @@ class Manager {
    std::string request(vecstr *args);
    std::string release(vecstr *args);
    std::string timeout();
-   std::string quit();
+   std::string killAll();
    std::string scheduler();
    
    // These functions verify if a string is a valid digit or a printable ascii char
