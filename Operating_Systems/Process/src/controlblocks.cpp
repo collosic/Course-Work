@@ -52,3 +52,17 @@ void PCB::removeResources(RCB *r) {
         }
     }
 }
+
+void RCB::removeFromWaitList(PCB *p) {
+    int size = wait_list.size();
+    for (int i = 0; i < size; i++) {
+        Proc *proc = wait_list.at(i);
+        PCB *test = proc->getPCB();
+        if (test == p) {
+            wait_list.erase(wait_list.begin() + i);
+            delete proc;
+            break;
+        }
+
+    }
+}

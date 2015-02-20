@@ -1,7 +1,22 @@
+init
 cr a 1
+req R4 4
 cr b 2
+req R4 1
 cr c 2
-cr d 1
+req R4 1
+cr d 2
+req R4 1
+cr e 2
+req R4 2
+rel R4 4
 to
-de c
+to
+to
+rel R4 1
 de b
+de c
+de d
+de e
+de a
+

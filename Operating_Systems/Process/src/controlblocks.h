@@ -104,5 +104,6 @@ class RCB {
     void setAvailableUnits(int r) { u = r; };
     void insertWaiting(Proc *w) { wait_list.push_back(w); };
     void release(int i) { u += i; };
+    void removeFromWaitList(PCB *p);
 };
 #endif

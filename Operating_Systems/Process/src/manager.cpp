@@ -312,6 +312,7 @@ void Manager::killSelf(PCB *p) {
         auto pos = std::distance(plist->begin(), it);
         parent->removeChildAt(pos);
     }
+    
     // free resources
     freeResources(p);
 
@@ -350,6 +351,9 @@ void Manager::freeResources(PCB *p) {
         OtherResources *o = resources->front();   
         RCB *r = o->getResource();
         int units = o->getUnits();
+        if (STATE::BLOCKED == p->getType()) 
+            r->removeFromWaitList(p);
+
         releaseRes(p, r, units);
     }
 }
@@ -387,6 +391,10 @@ std::string Manager::releaseRes(PCB *p, RCB* r, int num_rel) {
         // remove the process from the waiting list
         wait_list->erase(wait_list->begin());
         PCB *q = next->getPCB();
+
+        // delete the container holding the PCB in the waiting queue
+        delete next;
+
         q->setType(STATE::READY);
         q->setTypeList(&ready_list[q->getPriority()]);
         q->insertResources(new OtherResources(r, needed));
