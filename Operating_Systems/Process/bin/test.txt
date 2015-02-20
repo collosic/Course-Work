@@ -1,0 +1,7 @@
+cr a 1
+cr b 2
+cr c 2
+cr d 1
+to
+de c
+de b

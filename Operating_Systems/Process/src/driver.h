@@ -33,12 +33,4 @@ class Driver {
     std::string interface(vecstr *in); 
     bool getQuit() { return quit; };
 };
-
-
-
-
-
-
-
-
 #endif

@@ -150,9 +150,10 @@ std::string Manager::request(vecstr *args) {
     int max = r->getMaxUnits();
    
     // check to see if units requested is larger than max available
-    if (num_req > max)
+    if (num_req > max) {
         return "error(request too many units: " + units + "/" + 
                                 res_to_str.find(r->getRID())->second + ")";
+    }
     
     // need to check if the running process already has the reqeusted resource
     OtherResources* other = running->checkResources(r);
@@ -219,20 +220,16 @@ std::string Manager::release(vecstr *args) {
 
 std::string Manager::timeout() {
     if (running != nullptr) {
-        int priority = running->getPriority();
-        vecproc *list = &ready_list[priority];
+        vecproc *list = &ready_list[running->getPriority()];
         PCB *p;
         if (list->size() > 1 ) {
             p = list->at(1)->getPCB();
-            if (priority != 0) {
-                preempt(p);
-                return running->getPID();
-            } else {
-                return "only one process running at the priority";
-            }
+            preempt(p);
+            return running->getPID();
         }
         return running->getPID(); 
     }
+    // this should never happen since there should always be a process running
     return "no process is running";
 }
 
@@ -252,11 +249,9 @@ std::string Manager::killAll() {
 
 std::string Manager::scheduler() {
     // check the highest level priority until a process is found
-    Proc *proc;
     for (int i = NUM_PRIORITIES - 1; i >= 0; i--) {
         if(!ready_list[i].empty()) {
-            proc = ready_list[i].front();
-            PCB *p = proc->getPCB();
+            PCB *p = ready_list[i].front()->getPCB();
             if (self == nullptr || self->getPriority() < p->getPriority() || 
                     self->getType() != STATE::RUNNING) {
                 preempt(p);
@@ -296,7 +291,8 @@ void Manager::killTree(PCB *p) {
         // remove from type list and lookup and delete
         removeFromList(child); 
         processes.erase(child->getPID());
-        if (child == running) running = nullptr;
+        if (child == running) 
+            running = nullptr;
         delete child;
     }
     // remove the child from the parent
@@ -312,8 +308,7 @@ void Manager::killSelf(PCB *p) {
     PCB* parent = p->getParent();
     if (parent != nullptr) {
         vecpcb *plist = parent->getChildren();
-        vecpcb::iterator it;
-        it = find(plist->begin(), plist->end(), p);
+        vecpcb::iterator it = find(plist->begin(), plist->end(), p);
         auto pos = std::distance(plist->begin(), it);
         parent->removeChildAt(pos);
     }
@@ -356,7 +351,6 @@ void Manager::freeResources(PCB *p) {
         RCB *r = o->getResource();
         int units = o->getUnits();
         releaseRes(p, r, units);
-        //delete o;
     }
 }
 
@@ -368,9 +362,10 @@ std::string Manager::releaseRes(PCB *p, RCB* r, int num_rel) {
     // verify the number of units being released is no more than the number of units
     // this process is holding.    
     int units_holding = other->getUnits();
-    if (num_rel > units_holding) 
+    if (num_rel > units_holding) {
         return "error(release too many units: " + std::to_string(num_rel) + "/" +
                 res_to_str.find(r->getRID())->second + ":" + std::to_string(units_holding) + ")";
+    }
 
     int units_left = other->releaseResources(num_rel);
     if (units_left == 0) 
@@ -386,7 +381,9 @@ std::string Manager::releaseRes(PCB *p, RCB* r, int num_rel) {
         int needed = next->getUnits();
         if (needed > available) 
             break;
+        
         r->setAvailableUnits(available - needed);
+        
         // remove the process from the waiting list
         wait_list->erase(wait_list->begin());
         PCB *q = next->getPCB();
