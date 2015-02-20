@@ -1,0 +1,5 @@
+# 
+ init 
+ create a 1 
+ create b 1
+ create c 2

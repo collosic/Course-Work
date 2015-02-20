@@ -28,7 +28,8 @@ void Manager::initResources() {
 std::string Manager::initialize() {
     // first destroy the current init process and its children
     // second recreate the ready and blocked lists
-    killAll();
+    if (init_proc != nullptr) 
+        killAll();
     // init the resources
     initResources();
 
@@ -41,7 +42,7 @@ std::string Manager::initialize() {
     isInit = true;       
 
     // Now create a new process called init at level 0
-    return running->getPID();
+    return "\n\n" + running->getPID();
 }
 
 std::string Manager::create(vecstr *args) {
@@ -84,10 +85,11 @@ std::string Manager::create(vecstr *args) {
        self = running = init_proc;
     } else {
        running->insertChild(new_PCB); 
-       processes.insert(std::pair<std::string, PCB*>(name, new_PCB));
        // link to the parent here
        new_PCB->setParent(running);
     } 
+
+    processes.insert(std::pair<std::string, PCB*>(name, new_PCB));
     ready_list[p_level].push_back(new Proc(new_PCB, 0));
     new_PCB->setTypeList(&ready_list[p_level]);
     self = running;
@@ -133,6 +135,9 @@ std::string Manager::request(vecstr *args) {
     if (!is_digits(units)) 
         return "error(need number of resources)";
     
+    if (running == init_proc) 
+       return "error(init cannot request or release resources)";
+
     int num_req = std::stoi(units);
     // determine what kind of resource is requested 
     if (resources.find(re) == resources.end()) 
@@ -181,6 +186,9 @@ std::string Manager::release(vecstr *args) {
     std::string rel = args->front();
     args->erase(args->begin());
     std::string units = args->front();
+
+    if (running == init_proc)
+        return "error(init cannot request or release resources)";
     
     if (init_proc == nullptr)
         return "error(no process running)"; 

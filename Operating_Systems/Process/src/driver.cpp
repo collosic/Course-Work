@@ -16,7 +16,9 @@ Driver::Driver() {
 }
 
 Driver::~Driver() {
-
+    if (manager != nullptr)
+        delete manager;
+    manager = nullptr;
 }
 
 
@@ -46,7 +48,9 @@ std::string Driver::interface(vecstr *in) {
                     break;
         case 6:     response = in->size() == 0 ? manager->timeout() : "invalid use of to"; 
                     break;
-        case 7:     delete manager;
+        case 7:     if (manager != nullptr)
+                        delete manager;
+                    manager = nullptr;
                     quit = true;
                     response ="Good bye";
                     break;
@@ -58,7 +62,7 @@ std::string Driver::interface(vecstr *in) {
                     break;
         case 11:    
                     break;
-        default:    response = "invalid command"; 
+        default:    response = "error(invalid command: " + command + ")"; 
                     break;
     }
     in->clear();
