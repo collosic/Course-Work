@@ -2,13 +2,7 @@
 
 #include "manager.h"
 
-/* This function will destroy any previous creation tree, if it exists
- * and then create a brand new init process at level 0. */
-std::string Manager::initialize() {
-    // first destroy the current init process and its children
-    // second recreate the ready and blocked lists
-    if (init_proc != nullptr)
-        killAll(); 
+void Manager::initResources() {
     // create each resource
     R1 = new RCB(RESOURCES::R1, 1);
     R2 = new RCB(RESOURCES::R2, 2);
@@ -16,13 +10,31 @@ std::string Manager::initialize() {
     R4 = new RCB(RESOURCES::R4, 4);
 
     // place all resources in a hash map for easy lookup
-    for (int i = 1; i <= 4; i++) 
-        resources["R" + std::to_string(i)] = i;
+    resources["R1"] = R1;
+    resources["R2"] = R2;
+    resources["R3"] = R3;
+    resources["R4"] = R4;
+
+    res_to_str[RESOURCES::R1] = "R1";
+    res_to_str[RESOURCES::R2] = "R2";
+    res_to_str[RESOURCES::R3] = "R3";
+    res_to_str[RESOURCES::R4] = "R4";
+
+}
+
+
+/* This function will destroy any previous creation tree, if it exists
+ * and then create a brand new init process at level 0. */
+std::string Manager::initialize() {
+    // first destroy the current init process and its children
+    // second recreate the ready and blocked lists
+    killAll();
+    // init the resources
+    initResources();
 
     // generate a brand new process and resource environment
     init_proc = running = self = nullptr;
     ready_list = new vecproc[NUM_PRIORITIES];
-    blocked_list = new vecproc[NUM_PRIORITIES];
     isInit = false;
     vecstr params = {"init", "0"};
     create(&params);
@@ -46,18 +58,18 @@ std::string Manager::create(vecstr *args) {
     }
 
     if (processes.find(name) != processes.end()) {
-        return "process *" + name + " already exists";  
+        return "error(duplicate process name: " + name + ")";
     }
 
     if (!is_digits(priority)) {
-        return "priotiy paramater is not a digit";
+        return "error(priority paramater is not a digiti)";
     } else {
         p_level = std::stoi(priority);
         if (p_level == 0 && isInit) {
-            return "priority 0 can only be used by init";
+            return "error(priority 0 only used by init process)";
         } 
         if (p_level < 0 || p_level > 2) {
-            return "invalid priority level";
+            return "error(out of range priority level: " + priority + ")";
         }
     }
     
@@ -80,8 +92,7 @@ std::string Manager::create(vecstr *args) {
     new_PCB->setTypeList(&ready_list[p_level]);
     self = running;
     // finally run the scheduler to determin which process should be running
-    name = scheduler();    
-    return name;
+    return  scheduler(); 
 }
 
 std::string Manager::destroy(vecstr *arg) {
@@ -91,17 +102,20 @@ std::string Manager::destroy(vecstr *arg) {
         return "invalid name of a process";  
     }
     
+    // deleting the init proc will not be allowed unless init is called
+    if (name == "init")
+       return "error(cannot delete process: init)"; 
+
     // if the process does not exist return to the caller
     if (processes.find(name) == processes.end()) {
-        return notFound(name) + ", " + running_resp(running->getPID());
+        return "error(non-existent process: " + name + ")";
     }
     // we know the process exists so we need to find it and extract the PCB
     std::map<std::string, PCB*>::iterator proc = processes.find(name);
     PCB *p = proc->second;
     killSelf(p);
     self = running;
-    name = scheduler();
-    return name;
+    return scheduler();
 }
 
 std::string Manager::request(vecstr *args) {
@@ -111,41 +125,30 @@ std::string Manager::request(vecstr *args) {
     std::string units = args->front();
     
     if (init_proc == nullptr)
-        return "no processes are running";
+        return "error(init proc not running)";
 
     if (!is_printable(re)) 
-        return "not a valid resource";   
+        return "error(invalid resource name: " + re + ")";
 
     if (!is_digits(units)) 
-        return "re requires a digit after resource name";
-
+        return "error(need number of resources)";
+    
     int num_req = std::stoi(units);
-    if (num_req < 1 || num_req > 4) 
-        return "resource units requested is out of range";
-
     // determine what kind of resource is requested 
-    RCB *r;
     if (resources.find(re) == resources.end()) 
-        return "error";
+        return "error(non-existent resource: " + re + ")";
 
-    std::map<std::string, int>::iterator res = resources.find(re); 
-    switch (res->second) {
-        case 1:     r = R1;
-                    break;
-        case 2:     r = R2;
-                    break;
-        case 3:     r = R3;
-                    break;
-        case 4:     r = R4; 
-                    break;
-        default:    return "invalid resource name";
-    }   
+    std::map<std::string, RCB*>::iterator res = resources.find(re); 
+    RCB *r = res->second;
+
+    // now begin analysis of resources
     int available = r->getAvailableUnits();
     int max = r->getMaxUnits();
-    
+   
     // check to see if units requested is larger than max available
     if (num_req > max)
-        return "requested more units than resource can give out";
+        return "error(request too many many units: " + units + "/" + 
+                                res_to_str.find(r->getRID())->second + ")";
     
     // need to check if the running process already has the reqeusted resource
     OtherResources* other = running->checkResources(r);
@@ -180,41 +183,25 @@ std::string Manager::release(vecstr *args) {
     std::string units = args->front();
     
     if (init_proc == nullptr)
-        return "no processes are running";
+        return "error(no process running)"; 
 
     if (!is_printable(rel)) 
-        return "not a valid resource";   
+        return "error(not a valid resource)";
 
     if (!is_digits(units)) 
-        return "re requires a digit after resource name";
+        return "error(need number of resources)";
 
     int num_rel = std::stoi(units);
-    if (num_rel < 1 || num_rel > 4) 
-        return "resource units requested is out of range";
+    if (num_rel < 1) 
+        return "error(invalid number of resources: " + units + ")";
     
     // determine what kind of resource is requested 
-    RCB *r;
-
     if (resources.find(rel) == resources.end()) 
-        return "error";
+        return "error(non-existent resource: " + rel + ")";
     
-    std::map<std::string, int>::iterator release = resources.find(rel); 
-    switch (release->second) {
-        case 1:     //num_rel = num_rel > R1->getMaxUnits() ? R1->getAvailableUnits() : num_rel;
-                    if (num_rel > R1->getMaxUnits()) return "error";
-                    r = R1;
-                    break;
-        case 2:     if (num_rel > R2->getMaxUnits()) return "error";
-                    r = R2;
-                    break;
-        case 3:     if (num_rel > R3->getMaxUnits()) return "error";
-                    r = R3;
-                    break;
-        case 4:     if (num_rel > R4->getMaxUnits()) return "error";
-                    r = R4; 
-                    break;
-        default:    return "invalid resource name";
-    } 
+    std::map<std::string, RCB*>::iterator release = resources.find(rel); 
+    RCB *r = release->second;
+
     self = running;
     std::string s = releaseRes(self, r, num_rel);
     if (s != "") return s;
@@ -243,7 +230,9 @@ std::string Manager::timeout() {
 
 
 std::string Manager::killAll() {
-    killSelf(init_proc);
+    if (init_proc != nullptr) 
+        killSelf(init_proc);
+
     delete[] ready_list;
     delete R1;
     delete R2;
@@ -274,10 +263,12 @@ std::string Manager::scheduler() {
 void Manager::preempt(PCB *new_running) {
     // set the current running state to ready and push to the back of the queue
     if (running != nullptr) {
-        vecproc *list = &ready_list[running->getPriority()];
-        list->push_back(list->front());
-        list->erase(list->begin());
-        running->setState(STATE::READY);
+        if (running->getPriority() >= new_running->getPriority()) {
+            vecproc *list = &ready_list[running->getPriority()];
+            list->push_back(list->front());
+            list->erase(list->begin());
+            running->setState(STATE::READY);
+        }
     }
     // we need to make the new_running process into the running process
     new_running->setState(STATE::RUNNING);
@@ -364,13 +355,14 @@ void Manager::freeResources(PCB *p) {
 std::string Manager::releaseRes(PCB *p, RCB* r, int num_rel) {
     OtherResources* other = p->checkResources(r);
     if (other == nullptr) 
-        return "process " + p->getPID() + " isn't holding these resources";
+        return "error(not holding resource: " + res_to_str.find(r->getRID())->second + ")";
     
     // verify the number of units being released is no more than the number of units
     // this process is holding.    
     int units_holding = other->getUnits();
     if (num_rel > units_holding) 
-        return "attempting to release more units than the process holds";
+        return "error(release too many units: " + std::to_string(num_rel) + "/" +
+                res_to_str.find(r->getRID())->second + ":" + std::to_string(units_holding) + ")";
 
     int units_left = other->releaseResources(num_rel);
     if (units_left == 0) 

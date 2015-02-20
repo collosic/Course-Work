@@ -58,7 +58,7 @@ std::string Driver::interface(vecstr *in) {
                     break;
         case 11:    
                     break;
-        default:    return "invalid command entered";
+        default:    response = "invalid command"; 
                     break;
     }
     in->clear();

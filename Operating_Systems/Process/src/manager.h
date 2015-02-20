@@ -13,7 +13,6 @@ typedef decltype(nullptr) nullptr_t;
 class Manager {
   private:
     vecproc *ready_list;
-    vecproc *blocked_list;
     PCB *init_proc;
     PCB *running;
     PCB *self;
@@ -26,11 +25,12 @@ class Manager {
 
     // hashmaps to store names of processes and resources
     std::map<std::string, PCB*> processes;
-    std::map<std::string, int> resources;
+    std::map<std::string, RCB*> resources;
     
     // this variable is used to test if the init process is has already 
     // been created.  Priority level 0 can only be used once.
     bool isInit;
+    std::map<RESOURCES, std::string> res_to_str;
 
   public:
     Manager() : init_proc(nullptr), running(nullptr), self(nullptr) { initialize(); };
@@ -63,6 +63,7 @@ class Manager {
    std::string procInfo(vecstr *in);
    void freeResources(PCB *p);
    std::string releaseRes(PCB *p, RCB *r, int num_rel);
+   void initResources();
 
 };
 
