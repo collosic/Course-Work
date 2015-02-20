@@ -100,18 +100,17 @@ std::string Manager::create(vecstr *args) {
 std::string Manager::destroy(vecstr *arg) {
     // recursively destroy all child PCB's and then kill this current PCB
     std::string name = arg->front();
-    if (!is_printable(name)) {
+    if (!is_printable(name)) 
         return "invalid name of a process";  
-    }
     
     // deleting the init proc will not be allowed unless init is called
     if (name == "init")
        return "error(cannot delete process: init)"; 
 
     // if the process does not exist return to the caller
-    if (processes.find(name) == processes.end()) {
+    if (processes.find(name) == processes.end()) 
         return "error(non-existent process: " + name + ")";
-    }
+    
     // we know the process exists so we need to find it and extract the PCB
     std::map<std::string, PCB*>::iterator proc = processes.find(name);
     PCB *p = proc->second;

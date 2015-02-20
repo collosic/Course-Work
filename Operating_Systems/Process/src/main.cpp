@@ -18,7 +18,6 @@ int main(int argc, char* argv[])
 
 
 void runDriver(bool hasArgument, std::string commands) {
-    std::cout << "Enter a command below: " << std::endl;
     std::string rawInput, buf, o;
     Driver *driver = new Driver();
     vecstr in;
