@@ -6,10 +6,15 @@
 
 #include "controlblocks.h"
 
+// Constants
+const int NUM_PRIORITIES = 3;
+
+// Type Definitions
 typedef std::vector<std::string> vecstr;
+typedef std::vector<Proc*> vecproc;
 typedef decltype(nullptr) nullptr_t;
 
-
+// Classes
 class Manager {
   private:
     vecproc *ready_list;
@@ -35,7 +40,8 @@ class Manager {
   public:
     Manager() : init_proc(nullptr), running(nullptr), self(nullptr) { initialize(); };
     ~Manager() { killAll(); };
-    
+   
+   // Required functions for the kernel to call 
    std::string initialize();
    std::string create(vecstr *args);
    std::string destroy(vecstr *arg);
@@ -49,21 +55,14 @@ class Manager {
    bool is_digits(const std::string &str);
    bool is_printable(const std::string &print);
 
-   // These functions return string responses to the caller
-   std::string running_resp(std::string name) { return "*" + name + " is running"; };
-   std::string notFound(std::string name) { return "process " + name + " does not exist"; };
-
    // Helper functions to make things easier to read and follow
    void preempt(PCB *p);
    void killTree(PCB *p);
    void killSelf(PCB *p);
    void removeFromList(PCB *p);
-   //void remove(vecProc *list, PCB *p);
-   std::string listProcs();
-   std::string procInfo(vecstr *in);
    void freeResources(PCB *p);
-   std::string releaseRes(PCB *p, RCB *r, int num_rel);
    void initResources();
+   std::string releaseRes(PCB *p, RCB *r, int num_rel);
 
 };
 

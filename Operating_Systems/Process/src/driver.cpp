@@ -8,7 +8,6 @@ Driver::Driver() {
     std::string tmp[] = {"init", "cr", "de", "req", "rel", "to", "quit", "lp", "lr", "pp", "pr"};
     for (int i = 0; i < NUM_COMMANDS; i++) {
         map[tmp[i]] = i + 1;            
-        //commands[i] = tmp[i];
     }
 
     // Create a manager
@@ -24,10 +23,7 @@ Driver::~Driver() {
 
 std::string Driver::interface(vecstr *in) {
     std::string command = in->front();
-    // check and see if the system has been initialized if the command is not "init"
-    if (command.compare("init") != 0) {
-        
-    }
+    
     // remove the first element that was extracted into command
     in->erase(in->begin());
     std::map<std::string, int>::iterator value = map.find(command);
@@ -54,11 +50,11 @@ std::string Driver::interface(vecstr *in) {
                     quit = true;
                     response ="Good bye";
                     break;
-        case 8:     response = manager->listProcs();
+        case 8:    
                     break;
         case 9:     
                     break;
-        case 10:    response = manager->procInfo(in); 
+        case 10:    
                     break;
         case 11:    
                     break;

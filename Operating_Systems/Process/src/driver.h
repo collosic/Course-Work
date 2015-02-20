@@ -16,14 +16,12 @@
 // Typedef
 typedef std::vector<std::string> vecstr;
 
-
 class Driver {
   private:
-    //std::string commands[NUM_COMMANDS];
     std::map<std::string, int> map;
     bool quit;
 
-    // Data Structures required for the manager
+    // Data Structures required for the driver
     Manager *manager;
 
   public:

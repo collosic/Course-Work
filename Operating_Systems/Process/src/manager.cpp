@@ -152,7 +152,7 @@ std::string Manager::request(vecstr *args) {
    
     // check to see if units requested is larger than max available
     if (num_req > max)
-        return "error(request too many many units: " + units + "/" + 
+        return "error(request too many units: " + units + "/" + 
                                 res_to_str.find(r->getRID())->second + ")";
     
     // need to check if the running process already has the reqeusted resource
@@ -180,6 +180,7 @@ std::string Manager::request(vecstr *args) {
     }
     return running->getPID();
 }
+
 
 std::string Manager::release(vecstr *args) {
     // extract and anaylze the arguments
@@ -240,7 +241,7 @@ std::string Manager::timeout() {
 std::string Manager::killAll() {
     if (init_proc != nullptr) 
         killSelf(init_proc);
-
+    
     delete[] ready_list;
     delete R1;
     delete R2;
@@ -271,7 +272,7 @@ std::string Manager::scheduler() {
 void Manager::preempt(PCB *new_running) {
     // set the current running state to ready and push to the back of the queue
     if (running != nullptr) {
-        if (running->getPriority() >= new_running->getPriority()) {
+        if (running->getPriority() == new_running->getPriority()) {
             vecproc *list = &ready_list[running->getPriority()];
             list->push_back(list->front());
             list->erase(list->begin());
@@ -405,21 +406,5 @@ bool Manager::is_digits(const std::string &str) {
 
 bool Manager::is_printable(const std::string &print) {
     return std::all_of(print.begin(), print.end(), ::isprint);
-}
-
-
-std::string Manager::listProcs() {
-    std::string res;
-    for (auto const& p : processes) {
-        res += p.first + " ";
-    }
-    return res;
-}
-
-
-
-std::string Manager::procInfo(vecstr *in) {
-    
-    return "";
 }
 

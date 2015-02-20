@@ -40,7 +40,7 @@ void runDriver(bool hasArgument, std::string commands) {
                 while (ss >> buf) { 
                     in.push_back(buf);
                 }
-               o += driver->interface(&in) + " ";
+                o += driver->interface(&in) + " ";
             }
             out << o;
             std::cout << o << std::endl;

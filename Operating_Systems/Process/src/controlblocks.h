@@ -14,9 +14,6 @@ class RCB;
 enum class STATE {RUNNING, READY, BLOCKED};
 enum class RESOURCES {R1, R2, R3, R4};
 
-// Constants
-const int NUM_PRIORITIES = 3;
-
 // Type definitions
 typedef std::vector<PCB*> vecpcb;
 typedef std::vector<Proc*> vecproc;
