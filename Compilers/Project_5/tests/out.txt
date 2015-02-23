@@ -1,0 +1,65 @@
+ast.DeclarationList(3,1)
+  ast.FunctionDefinition(3,1)[Symbol(addInts), [Symbol(a), Symbol(b)]]
+    ast.StatementList(4,3)
+      ast.Return(4,3)
+        ast.Addition(4,12)
+          ast.Dereference(4,10)
+            ast.AddressOf(4,10)[a]
+          ast.Dereference(4,14)
+            ast.AddressOf(4,14)[b]
+  ast.FunctionDefinition(7,1)[Symbol(addFloats), [Symbol(a), Symbol(b)]]
+    ast.StatementList(8,3)
+      ast.Return(8,3)
+        ast.Addition(8,12)
+          ast.Dereference(8,10)
+            ast.AddressOf(8,10)[a]
+          ast.Dereference(8,14)
+            ast.AddressOf(8,14)[b]
+  ast.FunctionDefinition(11,1)[Symbol(addBools), [Symbol(a), Symbol(b)]]
+    ast.StatementList(12,3)
+      ast.Return(12,3)
+        ast.Addition(12,12)
+          ast.Dereference(12,10)
+            ast.AddressOf(12,10)[a]
+          ast.Dereference(12,14)
+            ast.AddressOf(12,14)[b]
+  ast.FunctionDefinition(15,1)[Symbol(addIntBool), [Symbol(a), Symbol(b)]]
+    ast.StatementList(16,3)
+      ast.Return(16,3)
+        ast.Addition(16,12)
+          ast.Dereference(16,10)
+            ast.AddressOf(16,10)[a]
+          ast.Dereference(16,14)
+            ast.AddressOf(16,14)[b]
+  ast.FunctionDefinition(19,1)[Symbol(addIntFloat), [Symbol(a), Symbol(b)]]
+    ast.StatementList(20,3)
+      ast.Return(20,3)
+        ast.Addition(20,12)
+          ast.Dereference(20,10)
+            ast.AddressOf(20,10)[a]
+          ast.Dereference(20,14)
+            ast.AddressOf(20,14)[b]
+  ast.FunctionDefinition(23,1)[Symbol(main), []]
+    ast.StatementList(24,3)
+      ast.Call(24,3)[Symbol(printFloat)]
+        ast.ExpressionList(24,16)
+          ast.LiteralFloat(24,16)[7.0]
+  ast.FunctionDefinition(27,1)[Symbol(addWithError), []]
+    ast.StatementList(28,3)
+      ast.VariableDeclaration(28,3)[Symbol(a)]
+      ast.Assignment(29,3)
+        ast.AddressOf(29,7)[a]
+        ast.Addition(29,37)
+          ast.Addition(29,33)
+            ast.Addition(29,29)
+              ast.Addition(29,21)
+                ast.Addition(29,17)
+                  ast.Addition(29,13)
+                    ast.LiteralInt(29,11)[1]
+                    ast.LiteralInt(29,15)[2]
+                  ast.LiteralInt(29,19)[3]
+                ast.LiteralBool(29,23)[FALSE]
+              ast.LiteralInt(29,31)[4]
+            ast.LiteralInt(29,35)[5]
+          ast.LiteralInt(29,39)[6]
+

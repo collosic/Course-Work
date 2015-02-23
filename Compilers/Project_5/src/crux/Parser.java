@@ -4,6 +4,8 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Stack;
 
+import types.Type;
+import types.TypeList;
 import ast.Command;
 import ast.Expression;
 
@@ -12,18 +14,38 @@ public class Parser {
     public static String studentID = "11233529";
     public static String uciNetID = "ccollosi@uci.edu";
     
- // SymbolTable Management ==========================
+    
+// Typing System ===================================
+    
+    private Type tryResolveType(String typeStr)
+    {
+        return Type.getBaseType(typeStr);
+    }
+        
+    private int expectInteger() {
+
+    	return 0;
+    }
+
+    
+// SymbolTable Management ==========================
     private SymbolTable symbolTable;
     
     private void initSymbolTable()
     {
     	symbolTable = new SymbolTable();
-    	symbolTable.insert("readInt");
-    	symbolTable.insert("readFloat");
-    	symbolTable.insert("printBool");
-    	symbolTable.insert("printInt");
-    	symbolTable.insert("printFloat");
-    	symbolTable.insert("println");
+    	Symbol sym = symbolTable.insert("readInt");
+    	sym.setType(Type.getBaseType("int"));
+    	sym = symbolTable.insert("readFloat");
+    	sym.setType(Type.getBaseType("float"));
+    	sym =symbolTable.insert("printBool");
+    	sym.setType(Type.getBaseType("void"));
+    	sym = symbolTable.insert("printInt");
+    	sym.setType(Type.getBaseType("void"));
+    	sym = symbolTable.insert("printFloat");
+    	sym.setType(Type.getBaseType("void"));
+    	sym = symbolTable.insert("println");
+    	sym.setType(Type.getBaseType("void"));
     }
     
     private void enterScope()
@@ -35,7 +57,6 @@ public class Parser {
    		prevDepth = prevSymbolTable.getDepth();
    		symbolTable = new SymbolTable(prevDepth + 1);
    		symbolTable.setParent(prevSymbolTable);
-        //throw new RuntimeException("implement this");
     }
     
     private void exitScope()
@@ -268,10 +289,10 @@ public class Parser {
     }
     
     // type := IDENTIFIER .
-    public void type()
-    {
-
-        expect(Token.Kind.IDENTIFIER);
+    public Type type()
+    { 	
+        Token tok = expectRetrieve(Token.Kind.IDENTIFIER);
+        return tryResolveType(tok.lexeme());
     }
     
     // op0 := ">=" | "<=" | "!=" | "==" | ">" | "<" .
@@ -427,23 +448,27 @@ public class Parser {
     }
     
     // parameter := IDENTIFIER ":" type .
-    public Symbol parameter() {	
+    public Type parameter() {	
     	Symbol sym = tryDeclareSymbol(expectRetrieve(Token.Kind.IDENTIFIER));
+    	//sym.setType(sym);
         expect(Token.Kind.COLON);
-        type();
-        return sym;
+        Type t = type();
+        sym.setType(t);
+        params.add(sym);
+        return t;
     }
     
     
     // parameter-list := [ parameter { "," parameter } ] .
-    public void parameter_list() {
-    	
+    public TypeList parameter_list() {
+    	TypeList tl = new TypeList();
         if (have(NonTerminal.PARAMETER)) {
-            params.add(parameter());
+            tl.append(parameter());
             while (accept(Token.Kind.COMMA)) {
-            	params.add(parameter());
+            	tl.append(parameter());
             }
         }
+        return tl;
     }
     
     // variable-declaration := "var" IDENTIFIER ":" type ";"
@@ -452,7 +477,7 @@ public class Parser {
         Token tok = expectRetrieve(Token.Kind.VAR);
         Symbol sym = tryDeclareSymbol(expectRetrieve(Token.Kind.IDENTIFIER));
         expect(Token.Kind.COLON);
-        type();
+        sym.setType(type());
         expect(Token.Kind.SEMICOLON);
         return new ast.VariableDeclaration(tok.lineNumber(), tok.charPosition(), sym);
     }
@@ -477,23 +502,22 @@ public class Parser {
     }
     
     // function-definition := "func" IDENTIFIER "(" parameter-list ")" ":" type statement-block .
-    public ast.Declaration function_definition() { 	
-    	
-        Token tok = expectRetrieve(Token.Kind.FUNC);
+    public ast.Declaration function_definition() {
+    	Token tok = expectRetrieve(Token.Kind.FUNC);
         Symbol sym = tryDeclareSymbol(expectRetrieve(Token.Kind.IDENTIFIER));
         
         expect(Token.Kind.OPEN_PAREN);
     	enterScope();
     	
         // must determine a way to continue even if parameter-list is empty
-        parameter_list();
+        TypeList tl = parameter_list();
         ArrayList<Symbol> args = new ArrayList<Symbol>(params);
         params.clear();
         
         expect(Token.Kind.CLOSE_PAREN);
         expect(Token.Kind.COLON);
         // Next is 
-        type();
+        sym.setType(type());
         ast.StatementList body = statement_block();
         exitScope();       
         return new ast.FunctionDefinition(tok.lineNumber(), tok.charPosition(), sym, args, body);
