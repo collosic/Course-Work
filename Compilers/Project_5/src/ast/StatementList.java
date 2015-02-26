@@ -18,6 +18,10 @@ public class StatementList extends Command implements Iterable<Statement> {
 	{
 		list.add(command);
 	}
+	
+	public int size() {
+		return list.size();
+	}
 
 	@Override
 	public Iterator<Statement> iterator() {

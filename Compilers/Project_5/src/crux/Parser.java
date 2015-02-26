@@ -23,8 +23,8 @@ public class Parser {
     }
         
     private int expectInteger() {
-
-    	return 0;
+    	Token tok = expectRetrieve(Token.Kind.INTEGER);
+    	return Integer.parseInt(tok.lexeme());
     }
 
     
@@ -486,18 +486,32 @@ public class Parser {
     public ast.ArrayDeclaration array_declaration() {
     	Token tok = expectRetrieve(Token.Kind.ARRAY);
         Symbol sym = tryDeclareSymbol(expectRetrieve(Token.Kind.IDENTIFIER));
-
+        ArrayList<Integer> extents = new ArrayList<Integer>();
+        
         expect(Token.Kind.COLON);
-        type();
+        Type base = type();
+
         expect(Token.Kind.OPEN_BRACKET);
-        expect(Token.Kind.INTEGER);
+        extents.add(expectInteger());
         expect(Token.Kind.CLOSE_BRACKET);
         
+       
+        
         while (accept(Token.Kind.OPEN_BRACKET)) {
-            expect(Token.Kind.INTEGER);
+        	// if we get in here we need to assign new array types to the base type
+        	extents.add(expectInteger());
             expect(Token.Kind.CLOSE_BRACKET);
         }
-        expect(Token.Kind.SEMICOLON);       
+        
+        expect(Token.Kind.SEMICOLON);   
+        
+        // we can now build our ArrayType structure
+        int size = extents.size() - 1;
+        types.ArrayType array = new types.ArrayType(extents.get(size), base);
+        for (int i = size - 1; i >= 0; i--) {
+        	array = new types.ArrayType(extents.get(i), array);
+        }
+        sym.setType(array);
         return new ast.ArrayDeclaration(tok.lineNumber(), tok.charPosition(), sym);
     }
     

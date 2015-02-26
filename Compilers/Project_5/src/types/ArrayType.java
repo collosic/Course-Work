@@ -7,7 +7,6 @@ public class ArrayType extends Type {
     
     public ArrayType(int extent, Type base)
     {
-        //throw new RuntimeException("implement operators");
         this.extent = extent;
         this.base = base;
     }
