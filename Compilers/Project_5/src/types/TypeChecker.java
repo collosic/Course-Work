@@ -123,10 +123,10 @@ public class TypeChecker implements CommandVisitor {
         			break;
         		}
         	}
-        	if (getType(node) == null)
-        		put(node, new VoidType());
-    	}
 
+    	}
+    	if (getType(node) == null)
+    		put(node, new VoidType());
     }
 
     @Override
@@ -262,17 +262,65 @@ public class TypeChecker implements CommandVisitor {
     
     @Override
     public void visit(Subtraction node) {
-        throw new RuntimeException("Implement this");
+    	Command leftside = (Command) node.leftSide();
+    	Command rightside = (Command) node.rightSide();
+    	
+        check(leftside);
+        check(rightside);
+        
+        Type left_t = getType(leftside);
+        Type right_t = getType(rightside);
+        
+        if (!left_t.equivalent(right_t)) {
+        	put(node, left_t.add(right_t));
+        } else if (checkReturnTypes(left_t, right_t)){
+        	// if they are equivalent then we can use either one in the hash map
+        	put(node, left_t.add(right_t));	
+        } else {
+        	put(node, left_t);
+        }
     }
     
     @Override
     public void visit(Multiplication node) {
-        throw new RuntimeException("Implement this");
+    	Command leftside = (Command) node.leftSide();
+    	Command rightside = (Command) node.rightSide();
+    	
+        check(leftside);
+        check(rightside);
+        
+        Type left_t = getType(leftside);
+        Type right_t = getType(rightside);
+        
+        if (!left_t.equivalent(right_t)) {
+        	put(node, left_t.add(right_t));
+        } else if (checkReturnTypes(left_t, right_t)){
+        	// if they are equivalent then we can use either one in the hash map
+        	put(node, left_t.add(right_t));	
+        } else {
+        	put(node, left_t);
+        }
     }
     
     @Override
     public void visit(Division node) {
-        throw new RuntimeException("Implement this");
+    	Command leftside = (Command) node.leftSide();
+    	Command rightside = (Command) node.rightSide();
+    	
+        check(leftside);
+        check(rightside);
+        
+        Type left_t = getType(leftside);
+        Type right_t = getType(rightside);
+        
+        if (!left_t.equivalent(right_t)) {
+        	put(node, left_t.add(right_t));
+        } else if (checkReturnTypes(left_t, right_t)){
+        	// if they are equivalent then we can use either one in the hash map
+        	put(node, left_t.add(right_t));	
+        } else {
+        	put(node, left_t);
+        }
     }
     
     @Override
@@ -303,7 +351,27 @@ public class TypeChecker implements CommandVisitor {
 
     @Override
     public void visit(LogicalOr node) {
-        throw new RuntimeException("Implement this");
+    	Command leftside = (Command) node.leftSide();
+    	Command rightside = (Command) node.rightSide();
+    	
+        check(leftside);
+        put(leftside, getType(leftside));
+        check(rightside);
+        put(rightside, getType(rightside));
+        
+        Type left_t = getType(leftside);
+        Type right_t = getType(rightside);
+              
+        // this bool types are used for testing only
+        BoolType bt = new BoolType();
+        
+        if (!left_t.equivalent(right_t)) {
+        	put(node, left_t.and(right_t));
+        } else if (!bt.equivalent(left_t) && !bt.equivalent(right_t)) {
+        	put(node, left_t.and(right_t));
+        } else {
+        	put(node, bt);
+        }
     }
 
     @Override
@@ -349,7 +417,6 @@ public class TypeChecker implements CommandVisitor {
     @Override
     public void visit(Index node) {
     	Command c = (Command) node.base();
-    	Command amount = (Command) node.amount();
     	check(c);
     	
     	Type t = getType(c);
@@ -357,7 +424,6 @@ public class TypeChecker implements CommandVisitor {
     	
     	if (t instanceof AddressType) {
     		base = ((AddressType) t).base();
-    		int extent = ((ArrayType) base).extent();
     		Type new_base = ((ArrayType) base).base();
     		put(node, new_base);
     		
@@ -370,10 +436,6 @@ public class TypeChecker implements CommandVisitor {
     		AddressType at = new AddressType(t);
     		put(node, at.index(t));
     	}
-    	
-    	
-    	
-   	
     }
 
     @Override
@@ -413,10 +475,7 @@ public class TypeChecker implements CommandVisitor {
     public void visit(Call node) {	
     	check(node.arguments());
     	TypeList func_call_args = new TypeList();
-    	
-    	if (getType(node.arguments()) == null) {
-    		func_call_args.append(new VoidType());
-    	}
+
     	for (Expression e : node.arguments()) {
     		Type t = getType((Command) e);
     		func_call_args.append(t);
@@ -436,12 +495,8 @@ public class TypeChecker implements CommandVisitor {
     		params.append(new FloatType());
     		funcType = new FuncType(params, funcType);
     	} else {
-    		if (funcType instanceof VoidType) {
-    			params.append(new VoidType());
-    		} else {
+    		if (funcType instanceof FuncType)
     			params = ((FuncType) funcType).arguments();
-    		}
-    		
     	}
     	
     	if (!params.equivalent(func_call_args)) {
@@ -478,13 +533,15 @@ public class TypeChecker implements CommandVisitor {
     	StatementList else_block = node.elseBlock();
     	
     	check(then_block);
-   	
+    	
+    	Type then_b = getType(then_block);
+    	
+    	Type funcRetType = ((FuncType) functionNode.function().type()).returnType();
+    	
     	if (else_block.size() > 0) {
 	    	check(else_block);
-	    	// we can check to see that both return types are the same
-
-	    	
 	    	// here we can check for both statement blocks
+	    	Type else_b = getType(then_block);
 	    	if (getType(then_block) instanceof VoidType) {
 	    		retType = getType(then_block);
 	    	} else if (getType(else_block) instanceof VoidType) {
@@ -492,7 +549,19 @@ public class TypeChecker implements CommandVisitor {
 	    	} else {
 	    		// we can use either return since at this point they should both return the same 
 	    		// type
-	    		retType = getType(then_block);
+	    		if (then_b.equivalent(else_b)) {
+	    			retType = getType(then_block);
+	    		} else {
+	    			// we need to see which one is bad
+	    			if (!then_b.equivalent(funcRetType)) {
+	    				retType = then_b;
+	    			} else if (!else_b.equivalent(funcRetType)) {
+	    				retType = else_b;
+	    			} else {
+	    				// here either one works cause they are both correct but not equal, which makes no sense
+	    				retType = then_b;
+	    			}
+	    		}
 	    	}
     	} else {
     		// we don't have an else block and we only need to check the if_block
@@ -551,13 +620,6 @@ public class TypeChecker implements CommandVisitor {
         put(node, new ErrorType(node.message()));
     }
     
-    private FuncType createFuncType(FunctionDefinition node, Type r) {
-    	TypeList types = new TypeList();
-    	for(Symbol s : node.arguments()) {
-    		types.append(s.type());
-    	}   	
-    	return new FuncType(types, r, node.function().name());
-    }
     
     private void functionReturnError(FunctionDefinition node) {
     	FuncType func_t = (FuncType) node.function().type();
@@ -642,8 +704,9 @@ public class TypeChecker implements CommandVisitor {
     	return getType((Command) node);
     }
     
+    
     private boolean hasOtherPaths(StatementList node) {
-    	// check and see if other retun paths exist
+    	// check and see if other return paths exist
     	for (Statement s : node) {
 			if (s instanceof ast.IfElseBranch || s instanceof ast.WhileLoop) {
 				return true;
@@ -651,6 +714,7 @@ public class TypeChecker implements CommandVisitor {
     	}
     	return false;
     }
+    
     
     private Type getArrayBase(Type t) {
     	if (t instanceof ArrayType) {

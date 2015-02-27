@@ -44,7 +44,9 @@ public class Compiler {
             output.close();
             System.exit(-4);
         }
-        System.out.println("Crux Program is has no type errors.");
+        System.out.println("Crux Program has no type errors.");
+        output.println("Crux Program has no type errors.");
+        output.close();
     }
 }
     

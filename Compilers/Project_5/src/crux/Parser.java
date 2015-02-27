@@ -532,9 +532,8 @@ public class Parser {
         
         expect(Token.Kind.CLOSE_PAREN);
         expect(Token.Kind.COLON);
-        // Next is 
-        types.FuncType ft = new types.FuncType(tl, type());
-        sym.setType(ft);
+        // Next is  
+        sym.setType(new types.FuncType(tl, type()));
         ast.StatementList body = statement_block();
         
         exitScope();       
