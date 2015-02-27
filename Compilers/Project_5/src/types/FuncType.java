@@ -4,11 +4,15 @@ public class FuncType extends Type {
    
    private TypeList args;
    private Type ret;
-   private String name;
+   
+   public FuncType(TypeList args, Type returnType)
+   {
+      this.args = args;
+      this.ret = returnType;
+   }
    
    public FuncType(TypeList args, Type returnType, String name)
    {
-      this.name = name;
       this.args = args;
       this.ret = returnType;
    }
@@ -22,11 +26,7 @@ public class FuncType extends Type {
    {
       return args;
    }
-   
-   public String name() {
-	   return name;
-   }
-   
+
    @Override
    public String toString()
    {

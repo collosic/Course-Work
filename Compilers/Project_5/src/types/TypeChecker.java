@@ -154,21 +154,36 @@ public class TypeChecker implements CommandVisitor {
 
     @Override
     public void visit(VariableDeclaration node) {
-    	put(node, node.symbol().type());	
+    	Type t = node.symbol().type();
+    	if (t instanceof VoidType) {
+    		put(node, new ErrorType("Variable " + node.symbol().name() + " has invalid type " + t + "."));
+    	} else {	
+    		put(node, node.symbol().type());
+    	}
+	
     }
 
     @Override
     public void visit(ArrayDeclaration node) {
-    	put(node, node.symbol().type());  
+    	Type t = node.symbol().type();
+    	Type base = getArrayBase(t);
+    	if (base instanceof VoidType) {
+    		put(node, new ErrorType("Array " + node.symbol().name() + " has invalid base type " + 
+    											base + "."));
+    		
+    	} else {
+    		put(node, node.symbol().type()); 
+    	}
+    	 
     }
 
     @Override
     public void visit(FunctionDefinition node) { 
-    	// check and see if the main function has the correct signature of return type void
-    	String currentFunctionName = node.function().name();
-    	Type currentReturnType = node.function().type();
-    	FuncType func_t = createFuncType(node, currentReturnType);
     	functionNode = node;
+    	// check and see if the main function has the correct signature of return type void
+    	FuncType func_t = (FuncType) node.function().type();
+    	Type currentReturnType = ((FuncType) func_t).returnType();
+    	String currentFunctionName = node.function().name();
     	
     	if (currentFunctionName.equals("main") && !currentReturnType.equivalent(Type.getBaseType("void"))) {
     		put(node, new ErrorType("Function main has invalid signature."));
@@ -397,39 +412,49 @@ public class TypeChecker implements CommandVisitor {
     @Override
     public void visit(Call node) {	
     	check(node.arguments());
-    	TypeList func_args = new TypeList();
     	TypeList func_call_args = new TypeList();
     	
+    	if (getType(node.arguments()) == null) {
+    		func_call_args.append(new VoidType());
+    	}
     	for (Expression e : node.arguments()) {
     		Type t = getType((Command) e);
     		func_call_args.append(t);
     	}
     	
-      	Type funcReturnType = node.function().type();
+      	Type funcType = node.function().type();
     	String name = node.function().name();
-    	Type t = null;
+    	TypeList params = new TypeList();
     	
     	if (name.equals("printBool")) {
-    		t = new BoolType();
+    		params.append(new BoolType());
+    		funcType = new FuncType(params, funcType);
     	} else if (name.equals("printInt")) {
-    		t = new IntType();
+    		params.append(new IntType());
+    		funcType = new FuncType(params, funcType);
     	} else if (name.equals("printFloat")) {
-    		t = new FloatType();
+    		params.append(new FloatType());
+    		funcType = new FuncType(params, funcType);
     	} else {
-    		t = getType(node.arguments());
+    		if (funcType instanceof VoidType) {
+    			params.append(new VoidType());
+    		} else {
+    			params = ((FuncType) funcType).arguments();
+    		}
+    		
     	}
     	
-    	func_args.append(t);
-    	for(Type e : func_call_args) {
-    		if (!t.equivalent(e)) {
-    			if (e instanceof ArrayType)
-    				e = ((ArrayType) e).base();
-    			FuncType ft = new FuncType(func_args, funcReturnType, name);
-        		put(node, ft.call(func_call_args));
+    	if (!params.equivalent(func_call_args)) {
+    		put(node, funcType.call(func_call_args));
+    	} else {
+    		if (funcType instanceof FuncType) {
+    			put(node, ((FuncType) funcType).returnType());
+    		} else {
+    			put(node, funcType);
     		}
     	}
     	   	  	
-    	put(node, funcReturnType);
+    	
     }
 
     @Override
@@ -535,8 +560,9 @@ public class TypeChecker implements CommandVisitor {
     }
     
     private void functionReturnError(FunctionDefinition node) {
+    	FuncType func_t = (FuncType) node.function().type();
     	String currentFunctionName = node.function().name();
-    	Type currentReturnType = node.function().type();
+    	Type currentReturnType = func_t.returnType();
     	Type retType = getType(node.body());
     	String func = "Function " + currentFunctionName + " returns " + 
 				currentReturnType + " not " + retType + ".";
@@ -547,8 +573,9 @@ public class TypeChecker implements CommandVisitor {
     
     // These are all helper functions for errors the have occurred
     private void functionReturnError(FunctionDefinition node, Command ret, Command retn) {
+    	FuncType func_t = (FuncType) node.function().type();
     	String currentFunctionName = node.function().name();
-    	Type currentReturnType = node.function().type();
+    	Type currentReturnType = func_t.returnType();
     	Type retType = getType(ret);
     	String func = "Function " + currentFunctionName + " returns " + 
 				currentReturnType + " not " + retType + ".";
@@ -561,17 +588,18 @@ public class TypeChecker implements CommandVisitor {
     	VoidType vt = new VoidType();
     	ErrorType et = null;
     	TypeList types = func.arguments();
+    	String func_name = node.function().name();
     	int pos = 0;
     	
     	for(Type t : types) {   		    		
     		if (vt.equivalent(t)) {
-    			put(node, new ErrorType("Function " + func.name() + 
+    			put(node, new ErrorType("Function " + func_name + 
     									" has a void argument in position " + pos + "."));
     		}
     		
     		if (t instanceof ErrorType) {
     			et = (ErrorType) t;
-    			put(node, new ErrorType("Function " + func.name() + " has an error in argument in position " + 
+    			put(node, new ErrorType("Function " + func_name + " has an error in argument in position " + 
     					pos + ": " + et.getMessage()));
     		}
     		pos++;
@@ -624,13 +652,11 @@ public class TypeChecker implements CommandVisitor {
     	return false;
     }
     
-    private Type getArrayType(Type t) {
-		Type base = ((AddressType) t).base();
-   		if (base instanceof ArrayType) {
-   			base = ((ArrayType) base).base();
-   			if(base instanceof ArrayType)
-   				base = ((ArrayType) base).base();
-   		} 
-   		return base;
+    private Type getArrayBase(Type t) {
+    	if (t instanceof ArrayType) {
+    		return getArrayBase(((ArrayType) t).base());
+    	} else {
+    		return t;
+    	}
     }
 }

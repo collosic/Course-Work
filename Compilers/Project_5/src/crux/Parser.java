@@ -428,6 +428,8 @@ public class Parser {
         // need to check if this function was previously declared 
         Token tok = expectRetrieve(Token.Kind.CALL);
         Symbol sym = tryResolveSymbol(expectRetrieve(Token.Kind.IDENTIFIER));
+   
+        
  
         expect(Token.Kind.OPEN_PAREN);
         ast.ExpressionList args = expression_list();
@@ -531,8 +533,10 @@ public class Parser {
         expect(Token.Kind.CLOSE_PAREN);
         expect(Token.Kind.COLON);
         // Next is 
-        sym.setType(type());
+        types.FuncType ft = new types.FuncType(tl, type());
+        sym.setType(ft);
         ast.StatementList body = statement_block();
+        
         exitScope();       
         return new ast.FunctionDefinition(tok.lineNumber(), tok.charPosition(), sym, args, body);
     }
