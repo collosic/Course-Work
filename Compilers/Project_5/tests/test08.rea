@@ -4,4 +4,3 @@ TypeError(4,3)[Function andInt returns bool not ErrorType(Cannot compute int and
 TypeError(8,12)[Cannot compute float and float.]
 TypeError(8,3)[Function andFloat returns bool not ErrorType(Cannot compute float and float.).]
 
-Crux Program is has no type errors.

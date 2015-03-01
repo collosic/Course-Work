@@ -14,12 +14,10 @@ public class Compiler {
     public static void main(String[] args)
     {
         String sourceFilename = args[0];
-        PrintWriter output = null;
         
         Scanner s = null;
         try {
             s = new Scanner(new FileReader(sourceFilename));
-            output = new PrintWriter(new FileWriter("out.txt"));
         } catch (IOException e) {
             e.printStackTrace();
             System.err.println("Error accessing the source file: \"" + sourceFilename + "\"");
@@ -38,15 +36,10 @@ public class Compiler {
         tc.check(syntaxTree);
         if (tc.hasError()) {
             System.out.println("Error type-checking file.");
-            output.println("Error type-checking file.");
             System.out.println(tc.errorReport());
-            output.println(tc.errorReport());
-            output.close();
             System.exit(-4);
         }
         System.out.println("Crux Program has no type errors.");
-        output.println("Crux Program has no type errors.");
-        output.close();
     }
 }
     

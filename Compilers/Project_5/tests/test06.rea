@@ -11,4 +11,3 @@ TypeError(29,33)[Cannot add ErrorType(Cannot add ErrorType(Cannot add int with b
 TypeError(29,37)[Cannot add ErrorType(Cannot add ErrorType(Cannot add ErrorType(Cannot add int with bool.) with int.) with int.) with int.]
 TypeError(29,3)[Cannot assign ErrorType(Cannot add ErrorType(Cannot add ErrorType(Cannot add ErrorType(Cannot add int with bool.) with int.) with int.) with int.) to Address(int).]
 
-Crux Program is has no type errors.
